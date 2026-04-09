@@ -33,9 +33,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </a>
             </li>
             <li class="nav-item">
-                <a href="../nutritional_records/nutritional_records.php" class="nav-link <?php echo $currentPage == 'nutritional_records.php' ? 'active' : ''; ?>">
-                    <span class="material-icons nav-icon">monitor_weight</span>
-                    Nutritional Records
+                <a href="../management/management.php" class="nav-link <?php echo $currentPage == 'management.php' ? 'active' : ''; ?>">
+                    <span class="material-icons nav-icon">admin_panel_settings</span>
+                    Management
                 </a>
             </li>
         </ul>
