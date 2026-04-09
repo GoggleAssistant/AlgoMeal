@@ -60,7 +60,7 @@ $role = $_SESSION['role'] ?? 'Faculty';
             overflow-x: hidden;
         }
 
-        /* Sidebar Navigation */
+        /* Fixed Sidebar Navigation */
         .sidebar {
             width: 250px;
             background-color: var(--surface);
@@ -71,7 +71,7 @@ $role = $_SESSION['role'] ?? 'Faculty';
             height: 100vh;
             left: 0;
             top: 0;
-            z-index: 100;
+            z-index: 1000;
         }
 
         .sidebar-header {
@@ -81,19 +81,32 @@ $role = $_SESSION['role'] ?? 'Faculty';
             border-bottom: 1px solid var(--border);
         }
 
+        .sidebar-header .btn-text {
+            color: #000000; /* Black Hamburger */
+            margin-right: 0.75rem;
+            background: none;
+            border: none;
+            cursor: default; /* Non-interactive but preserved layout */
+            padding: 4px;
+            display: flex;
+            align-items: center;
+        }
+
         .brand-logo {
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             object-fit: contain;
             display: inline-block;
-            margin-right: 1rem;
+            margin-right: 0.75rem;
         }
 
         .sidebar-title {
             font-size: 1.25rem;
             font-weight: 400;
             color: var(--text-main);
+            white-space: nowrap;
         }
+
         .sidebar-title strong {
             font-weight: 700;
         }
@@ -102,22 +115,27 @@ $role = $_SESSION['role'] ?? 'Faculty';
             list-style: none;
             padding: 1rem 0;
             flex-grow: 1;
+            width: 100%;
+            margin: 0;
         }
 
         .nav-item {
-            padding: 0 1rem;
             margin-bottom: 0.25rem;
+            width: 100%;
+            padding: 0 0.75rem;
         }
 
         .nav-link {
             display: flex;
             align-items: center;
-            padding: 0.75rem 1rem;
+            padding: 0 1rem;
             color: var(--text-muted);
             text-decoration: none;
-            border-radius: 0 24px 24px 0;
+            border-radius: 24px;
             font-weight: 500;
-            transition: background-color 0.2s, color 0.2s;
+            transition: all 0.2s;
+            white-space: nowrap;
+            height: 48px;
         }
 
         .nav-link:hover {
@@ -131,75 +149,71 @@ $role = $_SESSION['role'] ?? 'Faculty';
         }
 
         .nav-icon {
+            font-size: 24px;
             margin-right: 1rem;
-            font-size: 20px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-text {
+            font-size: 0.95rem;
         }
 
         .nav-logout {
-            margin-top: auto;
-            padding: 1rem;
-            border-top: 1px solid var(--border);
+            margin-top: 0;
+            border-top: none;
+            padding-bottom: 1rem;
         }
 
-        /* Main Content */
+        /* Sidebar User Profile */
+        .sidebar-user {
+            margin-top: auto;
+            border-top: 1px solid var(--border);
+            padding: 1.5rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .sidebar-user-avatar-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--secondary);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .sidebar-user-name {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        
+        .sidebar-user-role {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
         .main-content {
             flex: 1;
             margin-left: 250px;
             display: flex;
             flex-direction: column;
             width: calc(100% - 250px);
+            min-height: 100vh;
         }
 
-        /* Top App Bar */
-        .topbar {
-            background-color: var(--surface);
-            border-bottom: 1px solid var(--border);
-            padding: 0 2rem;
-            height: 64px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 90;
-        }
-
-        .page-title {
-            font-size: 1.25rem;
-            font-weight: 400;
-        }
-
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .user-info {
-            text-align: right;
-        }
-
-        .user-name {
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        .user-role {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        .user-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background-color: var(--secondary);
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 500;
-        }
+        .topbar { display: none; }
 
         /* Dashboard Content */
         .content {
@@ -306,10 +320,6 @@ $role = $_SESSION['role'] ?? 'Faculty';
             cursor: pointer;
             padding: 0.5rem 1rem;
             border-radius: 4px;
-        }
-
-        .btn-text:hover {
-            background-color: rgba(26, 115, 232, 0.04);
         }
 
         /* Layout Grid */

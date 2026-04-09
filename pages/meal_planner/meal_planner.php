@@ -218,8 +218,10 @@ $recipes_json = json_encode($recipes);
             <div style="display: flex; gap: 1rem; align-items: center;">
                 <button class="btn" id="saveBtn" style="padding: 1rem 2rem; font-size: 1rem; background: var(--primary); color: white;" onclick="savePlan()" disabled>Deploy Plan</button>
                 <button class="btn btn-solid-danger" id="undeployBtn" style="padding: 1rem 2rem; font-size: 1rem; display:none;" onclick="undeployPlan()">Undeploy Plan</button>
-                <button class="btn" id="serveBtn" style="padding: 1rem 2rem; font-size: 1rem; background: #16a34a; color: white; display:none;" onclick="serveDay()">&#10003; Mark as Served</button>
+                <button class="btn" id="serveBtn" style="padding: 1rem 2rem; font-size: 1rem; background: #16a34a; color: white; display:none;" onclick="serveDay()">Mark as Served</button>
+                <button class="btn" id="unserveBtn" style="padding: 1rem 2rem; font-size: 1rem; display:none; border: 2px solid var(--border); background: white; color: var(--text-main); font-weight: 700;" onclick="unserveDay()">Unlock Plan</button>
             </div>
+
         </div>
     </div>
 
@@ -371,9 +373,12 @@ $recipes_json = json_encode($recipes);
         document.getElementById('saveBtn').innerText = 'Deploy Plan';
         document.getElementById('serveBtn').style.display = 'none';
         document.getElementById('serveBtn').disabled = false;
-        document.getElementById('serveBtn').innerText = '✓ Mark as Served';
+        document.getElementById('serveBtn').innerText = 'Mark as Served';
+        document.getElementById('unserveBtn').style.display = 'none';
+
         
         const dFormat = new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
         document.getElementById('dateDisplay').innerText = 'Plan Lunch for ' + dFormat;
         document.getElementById('plannerWorkspace').style.display = 'block';
 
@@ -389,8 +394,9 @@ $recipes_json = json_encode($recipes);
                 document.getElementById('mealBSelect').value = data.meal_b || '';
 
                 if (data.is_served) {
-                    document.getElementById('engineStatusIndicator').innerHTML = '<span style="color:#16a34a; font-weight:800;">&#128274; Served Day — Plan is Locked</span>';
+                    document.getElementById('engineStatusIndicator').innerHTML = '<span style="color:#16a34a; font-weight:800;"><span class="material-icons" style="font-size:14px; vertical-align:middle;">lock</span> Served Day — Plan is Locked</span>';
                     runDistribution().then(() => lockWorkspace());
+
                 } else {
                     document.getElementById('engineStatusIndicator').innerHTML = '<span style="color:#10b981;">Loaded Historical Configuration</span>';
                     document.getElementById('saveBtn').style.display = 'none'; // Replaced by Undeploy
@@ -645,27 +651,66 @@ $recipes_json = json_encode($recipes);
             } else {
                 alert('Could not lock: ' + data.message);
                 serveBtn.disabled = false;
-                serveBtn.innerText = '&#10003; Mark as Served';
+                serveBtn.innerHTML = 'Mark as Served';
             }
         } catch(e) {
             console.error(e);
             serveBtn.disabled = false;
+            serveBtn.innerHTML = 'Mark as Served';
         }
     }
 
     function lockWorkspace() {
         document.getElementById('mealASelect').disabled = true;
         document.getElementById('mealBSelect').disabled = true;
-        document.getElementById('saveBtn').disabled = true;
-        document.getElementById('saveBtn').innerText = 'Plan Locked';
-        document.getElementById('saveBtn').style.background = '#94a3b8';
+        
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerText = 'Plan Locked';
+        saveBtn.style.background = '#94a3b8';
+        saveBtn.style.display = 'flex';
+        
         document.getElementById('serveBtn').style.display = 'none';
         document.getElementById('undeployBtn').style.display = 'none';
+        document.getElementById('unserveBtn').style.display = 'flex';
         document.getElementById('engineStatusIndicator').innerHTML =
-            '<span style="color:#16a34a; font-weight:800;">&#128274; This day has been served and is locked.</span>';
+            '<span style="color:#16a34a; font-weight:800;"><span class="material-icons" style="font-size:14px; vertical-align:middle;">lock</span> This day has been served and is locked.</span>';
         // Disable all swap buttons
+
         document.querySelectorAll('.student-list-item button').forEach(b => b.disabled = true);
     }
+
+    async function unserveDay() {
+        if (!selectedDateStr) return;
+        if (!confirm('Unlock this day? This will allow you to edit and undeploy the plan.')) return;
+
+        const uBtn = document.getElementById('unserveBtn');
+        uBtn.disabled = true;
+        uBtn.innerText = 'Unlocking...';
+
+        try {
+            const response = await fetch('api_save_meal_plan.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'unserve', date: selectedDateStr })
+            });
+            const data = await response.json();
+            if (data.success) {
+                location.reload(); 
+            } else {
+                alert('Unlock failed: ' + data.message);
+                uBtn.disabled = false;
+                uBtn.innerHTML = 'Unlock Plan';
+            }
+
+        } catch(e) {
+            console.error(e);
+            uBtn.disabled = false;
+            uBtn.innerHTML = 'Unlock Plan';
+        }
+
+    }
+
 
     async function undeployPlan() {
         if (!selectedDateStr) return;

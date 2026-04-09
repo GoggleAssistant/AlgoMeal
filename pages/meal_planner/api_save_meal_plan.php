@@ -24,7 +24,15 @@ if ($action === 'mark_served') {
     exit;
 }
 
+// --- ACTION: Unserve (Unlock the day) ---
+if ($action === 'unserve') {
+    $conn->query("UPDATE daily_meal_plans SET is_served = 0 WHERE scheduled_date = '$date'");
+    echo json_encode(['success' => true, 'message' => 'Day unlocked successfully.']);
+    exit;
+}
+
 // --- ACTION: Undeploy (Reset the day) ---
+
 if ($action === 'undeploy') {
     // Check if it's served first
     $check = $conn->query("SELECT is_served FROM daily_meal_plans WHERE scheduled_date = '$date'");

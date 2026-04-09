@@ -31,34 +31,36 @@ require_once '../../includes/topbar.php';
     .modal-title { font-size: 1.5rem; font-weight: 800; color: var(--text-main); margin-bottom: 1.5rem; }
     
     .btn-modal-close {
-        position: absolute; top: 1rem; right: 1rem; width: 44px; height: 44px; 
-        background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 12px; 
+        position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; 
+        background: rgba(0,0,0,0.03); border: none; color: white; border-radius: 10px;
         display: flex; align-items: center; justify-content: center; cursor: pointer; 
-        transition: all 0.2s; backdrop-filter: blur(8px); z-index: 10; padding: 0;
+        transition: all 0.2s; z-index: 100;
     }
-    .btn-modal-close:hover { background: rgba(255,255,255,0.3); transform: scale(1.05); }
+    .btn-modal-close:hover { background: rgba(0,0,0,0.08); transform: translateY(-1px); }
+    .btn-modal-close .material-icons { font-size: 20px; color: var(--text-muted); opacity: 0.6; }
+    .btn-modal-close:hover .material-icons { opacity: 1; }
 
-    /* SWATCH SYSTEM */
-    .swatch-grid { display: flex; gap: 0.75rem; margin-top: 0.75rem; flex-wrap: wrap; }
+    /* Swatch System Updated */
+    .swatch-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.6rem; margin-top: 0.75rem; }
     .swatch { 
-        width: 38px; height: 38px; border-radius: 10px; cursor: pointer; border: 3px solid white; 
+        width: 100%; aspect-ratio: 1; border-radius: 8px; cursor: pointer; border: 3px solid white; 
         transition: all 0.2s; box-shadow: var(--shadow-sm); 
     }
-    .swatch:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
-    .swatch.active { border-color: var(--primary); transform: scale(1.1); box-shadow: 0 0 0 2px var(--primary); }
+    .swatch:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .swatch.active { border-color: var(--primary); transform: scale(1.05); }
 
+    .modal-detail-header { 
+        position: relative; background: white; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        z-index: 100; flex-shrink: 0;
+    }
     #modalHero {
-        height: 200px; width: 100%; position: relative; 
-        display: flex; align-items: flex-end; padding: 2rem;
+        height: 8px; width: 100%; position: relative; 
     }
-    .hero-watermark {
-        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        font-size: 12rem !important; opacity: 0.05; color: white; pointer-events: none;
-    }
-    .hero-gradient {
-        position: absolute; inset: 0;
-        background: linear-gradient(0deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
-    }
+    .modal-body-header { padding: 1.5rem 2.5rem; }
+
+
+
 </style>
 
 <div class="content">
@@ -107,7 +109,10 @@ require_once '../../includes/topbar.php';
                 <label style="display:block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Quick Preset Palette</label>
                 <div class="swatch-grid">
                     <?php 
-                    $presets = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b'];
+                    $presets = [
+                        '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b',
+                        '#0ea5e9', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777', '#475569'
+                    ];
                     foreach($presets as $p): ?>
                         <div class="swatch" style="background: <?= $p ?>" onclick="selectSwatch('<?= $p ?>', this)"></div>
                     <?php endforeach; ?>
@@ -167,16 +172,14 @@ require_once '../../includes/topbar.php';
 <!-- Recipe Detail Modal -->
 <div class="modal-overlay" id="recipeDetailModal">
     <div class="modal" style="max-width: 800px; width: 95%; height: 85vh; display: flex; flex-direction: column;">
-        <button class="btn-modal-close" onclick="closeModal('recipeDetailModal')">
-            <span class="material-icons">close</span>
-        </button>
-        
-        <div id="modalHero">
-            <div class="hero-gradient"></div>
-            <span class="material-icons hero-watermark">restaurant_menu</span>
-            <div style="position: relative; z-index: 5; width: 100%;">
-                <div id="modalBadges" style="display:flex; gap:0.5rem; margin-bottom: 1rem;"></div>
-                <h2 id="modalTitle" style="color: white; font-size: 2.25rem; font-weight: 900; margin: 0; line-height: 1.1; text-shadow: 0 2px 4px rgba(0,0,0,0.2);"></h2>
+        <div class="modal-detail-header">
+            <button class="btn-modal-close" onclick="closeModal('recipeDetailModal')">
+                <span class="material-icons">close</span>
+            </button>
+            <div id="modalHero"></div>
+            <div class="modal-body-header">
+                <h2 id="modalTitle" style="color: var(--text-main); font-size: 2.25rem; font-weight: 900; margin: 0 0 0.75rem 0; line-height: 1.1;"></h2>
+                <div id="modalBadges" style="display:flex; flex-wrap:wrap; gap:0.5rem;"></div>
             </div>
         </div>
 
@@ -213,8 +216,8 @@ require_once '../../includes/topbar.php';
                 <div id="modalCost" style="font-size: 1.25rem; font-weight: 900; color: var(--text-main);"></div>
             </div>
             <div style="display: flex; gap: 0.75rem;">
-                <button class="btn btn-outline" style="background: white;" onclick="openEditRecipe()">Modify Specs</button>
-                <button class="btn" style="background: var(--primary); color: white;" onclick="closeModal('recipeDetailModal')">Close Details</button>
+                <button class="btn" style="background: white; border: 2px solid var(--border); color: var(--text-main); font-weight: 700;" onclick="openEditRecipe()">Modify Details</button>
+                <button class="btn" style="background: var(--text-main); color: white; padding: 0.75rem 2rem;" onclick="closeModal('recipeDetailModal')">Close Details</button>
             </div>
         </div>
     </div>
@@ -336,8 +339,16 @@ require_once '../../includes/topbar.php';
             </div>
         `).join('');
 
+        // Restrictions/Allergens
+        const badgesContainer = document.getElementById('modalBadges');
+        const allergens = r.allergens ? r.allergens.split(',') : [];
+        badgesContainer.innerHTML = allergens.map(a => `
+            <span class="badge-allergen" style="background: #fee2e2; color: #b91c1c; font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700; text-transform: uppercase;">${a.trim()}</span>
+        `).join('');
+
         document.getElementById('recipeDetailModal').classList.add('active');
     }
+
 
     function openEditRecipe() {
         if (!currentViewingRecipe) return;
@@ -359,9 +370,17 @@ require_once '../../includes/topbar.php';
         document.getElementById('formInstructionsList').innerHTML = '';
         r.instructions.forEach(i => addInstructionRow(i.instruction));
 
+        // Restore restrictions checkboxes
+        const ids = r.restriction_ids ? r.restriction_ids.split(',') : [];
+        const checkboxes = document.querySelectorAll('#restrictionCheckboxes input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            cb.checked = ids.includes(cb.value);
+        });
+
         document.querySelector('#addRecipeModal h2').innerText = 'Modify Recipe Details';
         closeModal('recipeDetailModal');
     }
+
 
     function renderRecipes(recipes) {
         const grid = document.getElementById('recipeGrid');
@@ -370,8 +389,15 @@ require_once '../../includes/topbar.php';
                 <div style="height: 12px; background: ${r.hex_color || '#3b82f6'}; opacity:0.8;"></div>
                 <div class="card-content">
                     <h3 style="font-size:1.1rem; font-weight:900; margin:0 0 0.5rem 0; color:var(--text-main);">${r.recipe_name}</h3>
-                    <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.5; margin-bottom:1.5rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${r.description}</p>
+                    <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.5; margin-bottom:1rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${r.description}</p>
+                    
+                    <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1.5rem;">
+                        ${(r.allergens ? r.allergens.split(',') : []).map(a => `<span class="badge-allergen">${a.trim()}</span>`).slice(0, 3).join('')}
+                        ${(r.allergens ? r.allergens.split(',').length : 0) > 3 ? `<span style="font-size:0.65rem; color:var(--text-muted); font-weight:700;">+${r.allergens.split(',').length - 3} more</span>` : ''}
+                    </div>
+
                     <div style="margin-top:auto; display:flex; justify-content:space-between; align-items:flex-end;">
+
                         <div style="display:flex; gap:0.75rem; font-size:0.75rem; font-weight:800;">
                             <div><span style="display:block; color:var(--text-muted); font-size:0.6rem;">ENERGY</span>${r.energy_kcal}kcal</div>
                             <div><span style="display:block; color:var(--text-muted); font-size:0.6rem;">PROTEIN</span>${r.protein_g}g</div>
