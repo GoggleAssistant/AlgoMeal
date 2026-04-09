@@ -550,12 +550,6 @@ require_once '../../includes/bmi_helper.php';
                     <option value="Severely Wasted">Severely Wasted</option>
                     <option value="Overweight">Overweight</option>
                 </select>
-
-                <select id="mealFilter" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
-                    <option value="">All Meals</option>
-                    <option value="Meal A">Meal A</option>
-                    <option value="Meal B">Meal B</option>
-                </select>
                 <a href="#" class="clear-filters" onclick="clearFilters(); return false;">Clear</a>
             </div>
         </div>
@@ -569,7 +563,6 @@ require_once '../../includes/bmi_helper.php';
                         <th>Dietary Restrictions</th>
                         <th>BMI & Target Weight</th>
                         <th>Weight Gain</th>
-                        <th>Meal Assignment</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -621,7 +614,7 @@ require_once '../../includes/bmi_helper.php';
                             <tr class="student-row" data-lrn="<?php echo htmlspecialchars($st['student_id']); ?>"
                                 data-name="<?php echo htmlspecialchars(strtolower($st['first_name'] . ' ' . $st['last_name'])); ?>"
                                 data-allergies="<?php echo htmlspecialchars(strtolower($allergens)); ?>"
-                                data-bmi="<?php echo htmlspecialchars($bmiData['label']); ?>" data-meal="Meal A">
+                                data-bmi="<?php echo htmlspecialchars($bmiData['label']); ?>">
                                 <td>
                                     <span
                                         style="font-size: 0.875rem; color: var(--text-muted); font-weight: 500; font-family: monospace;">
@@ -664,10 +657,6 @@ require_once '../../includes/bmi_helper.php';
                                 </td>
                                 <td>
                                     <span class="weight-gain <?php echo $diffClass; ?>"><?php echo $diffStr; ?></span>
-                                </td>
-                                <td>
-                                    <!-- Currently mocked meal assignment, this will connect to CSP engine later -->
-                                    <span class="meal-badge" style="background-color: #f3e5f5; color: #8e24aa;">Meal A</span>
                                 </td>
                                 <td>
                                     <div style="display: flex; flex-direction: column; gap: 0.25rem;">
@@ -1226,17 +1215,14 @@ require_once '../../includes/bmi_helper.php';
         document.querySelectorAll('.student-row').forEach(row => {
             const rowLrn = row.getAttribute('data-lrn').toLowerCase();
             const rowName = row.getAttribute('data-name');
-            const rowAllergies = row.getAttribute('data-allergies');
             const rowBmi = row.getAttribute('data-bmi');
-            const rowMeal = row.getAttribute('data-meal');
 
-            let matchSearch = search === '' || rowLrn.includes(search) || rowName.includes(search) || rowAllergies.includes(search);
+            let matchSearch = search === '' || rowName.includes(search) || rowLrn.includes(search);
             let matchBmi = bmi === '' || rowBmi === bmi;
-            let matchMeal = meal === '' || rowMeal === meal;
 
-            if (matchSearch && matchBmi && matchMeal) {
+            if (matchSearch && matchBmi) {
                 row.style.display = '';
-            } else {
+                visibleCount++;      } else {
                 row.style.display = 'none';
             }
         });
@@ -1245,7 +1231,6 @@ require_once '../../includes/bmi_helper.php';
     function clearFilters() {
         document.getElementById('searchInput').value = '';
         document.getElementById('bmiFilter').value = '';
-        document.getElementById('mealFilter').value = '';
         filterTable();
     }
 
@@ -1271,7 +1256,6 @@ require_once '../../includes/bmi_helper.php';
 
     document.getElementById('searchInput').addEventListener('input', filterTable);
     document.getElementById('bmiFilter').addEventListener('change', filterTable);
-    document.getElementById('mealFilter').addEventListener('change', filterTable);
 
     let progressChart = null;
     let currentStudentData = null; // Global tracker for editing

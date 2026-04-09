@@ -260,16 +260,6 @@ require_once '../../includes/topbar.php';
                         <?php echo $student['allergens_list'] ?: 'NONE REPORTED'; ?>
                     </div>
                 </div>
-
-                <div style="display: flex; align-items: center; gap: 1.25rem; padding: 1.25rem; background: var(--bg-color); border-radius: 12px; border: 1px dashed var(--border);">
-                    <div style="width: 48px; height: 48px; background: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);">
-                        <span class="material-icons" style="color: var(--primary);">restaurant</span>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Active Meal Plan</div>
-                        <div style="font-weight: 800; color: var(--text-main);">Standard Recovery B1</div>
-                    </div>
-                </div>
             </div>
 
         </div>

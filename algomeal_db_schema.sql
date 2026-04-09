@@ -53,6 +53,25 @@ CREATE TABLE `meal_plan` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `daily_meal_plans`
+--
+
+DROP TABLE IF EXISTS `daily_meal_plans`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `daily_meal_plans` (
+  `scheduled_date` date NOT NULL,
+  `meal_a_recipe_id` varchar(10) NOT NULL,
+  `meal_b_recipe_id` varchar(10) NOT NULL,
+  PRIMARY KEY (`scheduled_date`),
+  KEY `meal_a_recipe_id` (`meal_a_recipe_id`),
+  KEY `meal_b_recipe_id` (`meal_b_recipe_id`),
+  CONSTRAINT `daily_meal_plans_ibfk_1` FOREIGN KEY (`meal_a_recipe_id`) REFERENCES `recipes` (`recipe_id`),
+  CONSTRAINT `daily_meal_plans_ibfk_2` FOREIGN KEY (`meal_b_recipe_id`) REFERENCES `recipes` (`recipe_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `nutritional_record`
 --
 
@@ -106,6 +125,7 @@ CREATE TABLE `recipes` (
   `energy_kcal` int(11) NOT NULL,
   `protein_g` decimal(4,2) NOT NULL,
   `base_cost_per_serving` decimal(5,2) NOT NULL,
+  `hex_color` varchar(7) DEFAULT '#3b82f6',
   PRIMARY KEY (`recipe_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
