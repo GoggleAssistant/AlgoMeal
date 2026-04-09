@@ -338,13 +338,23 @@ $recipes_json = json_encode($recipes);
                 let color1 = (rec1 && rec1.hex_color) ? rec1.hex_color : '#3b82f6';
                 let color2 = (rec2 && rec2.hex_color) ? rec2.hex_color : color1;
                 
-                html = `<div class="cal-day${extraClass}" id="cal-day-${dStr}" onclick="selectDate('${dStr}', this)" style="background: linear-gradient(135deg, ${color1}22 50%, ${color2}22 50%); border-left: 4px solid ${color1}; border-right: 4px solid ${color2};">
+                let styleStr = `background: linear-gradient(135deg, ${color1}22 50%, ${color2}22 50%); border-left: 4px solid ${color1}; border-right: 4px solid ${color2};`;
+                let lockIcon = '';
+                
+                if (deployed[dStr].status === 'served') {
+                    styleStr = `background: linear-gradient(135deg, ${color1}44 50%, ${color2}44 50%); border-left: 4px solid ${color1}; border-right: 4px solid ${color2}; box-shadow: inset 0 0 0 2px rgba(21, 128, 61, 0.3);`;
+                    lockIcon = '<span class="material-icons" style="position:absolute; top:0.25rem; right:0.25rem; font-size:14px; color:#15803d;" title="Served & Locked">lock</span>';
+                }
+
+                html = `<div class="cal-day${extraClass}" id="cal-day-${dStr}" onclick="selectDate('${dStr}', this)" style="${styleStr}">
                             <div class="cal-date">${i}</div>
+                            ${lockIcon}
                             <div style="position:absolute; bottom:0.5rem; right:0.5rem; display:flex; gap:2px;">
                                 <div class="status-dot" style="background: ${color1}; position:static;"></div>
                                 <div class="status-dot" style="background: ${color2}; position:static;"></div>
                             </div>`;
             }
+
             html += `</div>`;
             grid.innerHTML += html;
         }

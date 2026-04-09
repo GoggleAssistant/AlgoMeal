@@ -14,21 +14,24 @@ if (empty($month)) {
 $sql = "
     SELECT d.scheduled_date, 
            COUNT(m.student_id) as count,
+           d.is_served,
            CONCAT(d.meal_a_recipe_id, ',', d.meal_b_recipe_id) as assigned_recipes
     FROM daily_meal_plans d
     LEFT JOIN meal_plan m ON d.scheduled_date = m.scheduled_date
     WHERE d.scheduled_date LIKE '$month-%'
     GROUP BY d.scheduled_date
+
 ";
 $result = $conn->query($sql);
 $dates = [];
 
 while ($row = $result->fetch_assoc()) {
     $dates[$row['scheduled_date']] = [
-        'status' => 'deployed',
+        'status' => $row['is_served'] ? 'served' : 'deployed',
         'count' => $row['count'],
         'assigned_recipes' => $row['assigned_recipes']
     ];
+
 }
 
 echo json_encode([
