@@ -45,9 +45,9 @@ if ($active_section != '') {
             s.deworming_status,
             s.min_target_weight,
             s.max_target_weight,
-            (SELECT height FROM nutritional_record WHERE student_id = s.student_id ORDER BY assessment_date DESC LIMIT 1) as current_height,
-            (SELECT weight FROM nutritional_record WHERE student_id = s.student_id ORDER BY assessment_date DESC LIMIT 1) as current_weight,
-            (SELECT weight FROM nutritional_record WHERE student_id = s.student_id ORDER BY assessment_date ASC LIMIT 1) as baseline_weight,
+            (SELECT height FROM nutritional_record WHERE student_id = s.student_id ORDER BY assessment_date DESC, record_id DESC LIMIT 1) as current_height,
+            (SELECT weight FROM nutritional_record WHERE student_id = s.student_id ORDER BY assessment_date DESC, record_id DESC LIMIT 1) as current_weight,
+            (SELECT weight FROM nutritional_record WHERE student_id = s.student_id ORDER BY assessment_date ASC, record_id ASC LIMIT 1) as baseline_weight,
             (SELECT COUNT(*) FROM nutritional_record WHERE student_id = s.student_id) as record_count,
             GROUP_CONCAT(dr.restriction_name SEPARATOR ', ') as allergens,
             GROUP_CONCAT(sam.restriction_id SEPARATOR ',') as allergen_ids
@@ -72,9 +72,10 @@ if ($active_section != '') {
     $history_data = [];
     if (!empty($students)) {
         $student_ids = array_map(function ($s) use ($conn) {
-            return "'" . $conn->real_escape_string($s['student_id']) . "'"; }, $students);
+            return "'" . $conn->real_escape_string($s['student_id']) . "'";
+        }, $students);
         $ids_str = implode(',', $student_ids);
-        $hist_query = "SELECT nr.record_id, nr.student_id, nr.height, nr.weight, nr.assessment_date, u.faculty_name as created_by_name FROM nutritional_record nr LEFT JOIN users u ON nr.created_by = u.user_id WHERE nr.student_id IN ($ids_str) ORDER BY nr.assessment_date ASC";
+        $hist_query = "SELECT nr.record_id, nr.student_id, nr.height, nr.weight, nr.assessment_date, u.faculty_name as created_by_name FROM nutritional_record nr LEFT JOIN users u ON nr.created_by = u.user_id WHERE nr.student_id IN ($ids_str) ORDER BY nr.assessment_date ASC, nr.record_id ASC";
         $hist_res = $conn->query($hist_query);
         while ($r = $hist_res->fetch_assoc()) {
             if (!isset($history_data[$r['student_id']])) {
@@ -440,8 +441,16 @@ require_once '../../includes/bmi_helper.php';
     }
 
     /* Stacked Modal Management */
-    #chartModal { z-index: 1000; }
-    #addAssessmentModal, #editAssessmentModal, #viewAssessmentModal, #editStudentModal { z-index: 1100; }
+    #chartModal {
+        z-index: 1000;
+    }
+
+    #addAssessmentModal,
+    #editAssessmentModal,
+    #viewAssessmentModal,
+    #editStudentModal {
+        z-index: 1100;
+    }
 </style>
 
 <div class="content">
@@ -625,9 +634,12 @@ require_once '../../includes/bmi_helper.php';
                                             <?php echo strtoupper(substr($st['first_name'], 0, 1)); ?>
                                         </div>
                                         <div class="student-info">
-                                            <span class="student-name"><?php echo htmlspecialchars($st['first_name'] . ' ' . $st['last_name']); ?></span>
+                                            <a href="profile.php?lrn=<?php echo urlencode($st['student_id']); ?>" class="student-name-link" style="text-decoration: none; color: inherit; font-weight: 700; transition: color 0.2s;">
+                                                <?php echo htmlspecialchars($st['first_name'] . ' ' . $st['last_name']); ?>
+                                            </a>
                                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem;">
-                                                <?php echo $st['current_height'] ?: '--'; ?> cm • <?php echo $st['current_weight'] ?: '--'; ?> kg
+                                                <?php echo $st['current_height'] ?: '--'; ?> cm •
+                                                <?php echo $st['current_weight'] ?: '--'; ?> kg
                                             </div>
                                         </div>
                                     </div>
@@ -819,7 +831,8 @@ require_once '../../includes/bmi_helper.php';
                     <option value="">Select Section</option>
                     <?php foreach ($sections as $s): ?>
                         <option value="<?php echo htmlspecialchars($s['section']); ?>">
-                            <?php echo htmlspecialchars($s['section']); ?></option>
+                            <?php echo htmlspecialchars($s['section']); ?>
+                        </option>
                     <?php endforeach; ?>
                     <option value="Other">Other (Type New...)</option>
                 </select>
@@ -897,6 +910,42 @@ require_once '../../includes/bmi_helper.php';
                     onclick="document.getElementById('addStudentModal').classList.remove('active')">Cancel</button>
                 <button type="submit" class="btn" style="background: var(--primary); color: white;">Register
                     Student</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Assessment Modal -->
+<div class="modal-overlay" id="addAssessmentModal">
+    <div class="modal" style="max-width: 400px; width: 95%;">
+        <h2 class="modal-title">New Nutritional Record</h2>
+        <form id="assessmentForm">
+            <input type="hidden" id="assessLrn" name="student_id">
+            <div style="margin-bottom: 1rem;">
+                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Height (cm)</label>
+                <input type="number" step="0.1" id="assess_height" name="height" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Weight (kg)</label>
+                <input type="number" step="0.1" id="assess_weight" name="weight" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+            </div>
+            <div style="margin-bottom: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                <label style="display:flex; justify-content:space-between; font-size: 0.75rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;">
+                    Target Weight (Optional)
+                    <a href="#" onclick="suggestTargetWeightAssessment(); return false;" style="font-size: 0.65rem;">SUGGEST</a>
+                </label>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    <input type="number" step="0.1" name="min_target_weight" id="assess_min_target_weight" placeholder="Min" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    <input type="number" step="0.1" name="max_target_weight" id="assess_max_target_weight" placeholder="Max" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                </div>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Assessment Date</label>
+                <input type="date" name="assessment_date" value="<?php echo date('Y-m-d'); ?>" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="document.getElementById('addAssessmentModal').classList.remove('active')">Cancel</button>
+                <button type="submit" class="btn" style="background: var(--primary); color: white;">Save Record</button>
             </div>
         </form>
     </div>
@@ -1005,7 +1054,8 @@ require_once '../../includes/bmi_helper.php';
                     <option value="">Select Section</option>
                     <?php foreach ($sections as $s): ?>
                         <option value="<?php echo htmlspecialchars($s['section']); ?>">
-                            <?php echo htmlspecialchars($s['section']); ?></option>
+                            <?php echo htmlspecialchars($s['section']); ?>
+                        </option>
                     <?php endforeach; ?>
                     <option value="Other">Other (Type New...)</option>
                 </select>
@@ -1066,23 +1116,29 @@ require_once '../../includes/bmi_helper.php';
         <h2 class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
             <span id="chartModalTitle">Student Progress</span>
             <div style="display:flex; gap: 0.5rem;">
-                <button id="mainEditStudentBtn" class="btn-icon" title="Edit Student Profile" style="color: var(--primary);"><span class="material-icons">edit</span></button>
-                <button class="btn-icon" onclick="closeChartModal()" title="Close"><span class="material-icons">close</span></button>
+                <button id="mainEditStudentBtn" class="btn-icon" title="Edit Student Profile"
+                    style="color: var(--primary);"><span class="material-icons">edit</span></button>
+                <button class="btn-icon" onclick="closeChartModal()" title="Close"><span
+                        class="material-icons">close</span></button>
             </div>
         </h2>
         <div style="height: 250px; width: 100%;">
             <canvas id="bmiChart"></canvas>
         </div>
 
-        <div style="display: flex; gap: 1rem; margin-top: 1rem; background: var(--bg-color); padding: 0.75rem; border-radius: 8px; align-items: center;">
-            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Filter Date Range:</div>
+        <div
+            style="display: flex; gap: 1rem; margin-top: 1rem; background: var(--bg-color); padding: 0.75rem; border-radius: 8px; align-items: center;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                Filter Date Range:</div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <label style="font-size: 0.75rem;">From:</label>
-                <input type="date" id="chartFilterFrom" onchange="updateHistoryView()" style="padding: 0.25rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem;">
+                <input type="date" id="chartFilterFrom" onchange="updateHistoryView()"
+                    style="padding: 0.25rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem;">
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <label style="font-size: 0.75rem;">To:</label>
-                <input type="date" id="chartFilterTo" onchange="updateHistoryView()" style="padding: 0.25rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem;">
+                <input type="date" id="chartFilterTo" onchange="updateHistoryView()"
+                    style="padding: 0.25rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem;">
             </div>
         </div>
 
@@ -1114,7 +1170,8 @@ require_once '../../includes/bmi_helper.php';
                 <button class="btn-icon" id="viewModalEditBtn" style="color: var(--primary);" title="Edit Record">
                     <span class="material-icons">edit</span>
                 </button>
-                <button class="btn-icon" onclick="document.getElementById('viewAssessmentModal').classList.remove('active')" title="Close">
+                <button class="btn-icon"
+                    onclick="document.getElementById('viewAssessmentModal').classList.remove('active')" title="Close">
                     <span class="material-icons">close</span>
                 </button>
             </div>
@@ -1253,21 +1310,23 @@ require_once '../../includes/bmi_helper.php';
     // Sync categorization with PHP helper colors
     function categorizeBMI_JS(bmi) {
         if (!bmi || bmi <= 0) return { label: 'Unknown', style: 'background-color: #f1f3f4; color: #5f6368;' };
-        if (bmi < 16.0) return { label: 'Severely Wasted', style: 'background-color: #ffebee; color: #c62828;' };
-        if (bmi < 18.5) return { label: 'Wasted', style: 'background-color: #fff3e0; color: #ef6c00;' };
-        if (bmi < 25.0) return { label: 'Normal', style: 'background-color: #e8f5e9; color: #2e7d32;' };
+        if (bmi < 16.0) return { label: 'Severely Wasted (Severe Thinness)', style: 'background-color: #ffebee; color: #c62828;' };
+        if (bmi < 18.5) return { label: 'Moderate/Mild Thinness', style: 'background-color: #fff3e0; color: #ef6c00;' };
+        if (bmi < 25.0) return { label: 'Healthy/Normal Weight', style: 'background-color: #e8f5e9; color: #2e7d32;' };
         if (bmi < 30.0) return { label: 'Overweight', style: 'background-color: #f3e5f5; color: #7b1fa2;' };
-        return { label: 'Obese', style: 'background-color: #212121; color: #ffffff;' };
+        if (bmi < 35.0) return { label: 'Obese Class I (Moderate)', style: 'background-color: #212121; color: #ffffff;' };
+        if (bmi < 40.0) return { label: 'Obese Class II (Severe)', style: 'background-color: #1a1a1a; color: #ffffff;' };
+        return { label: 'Obese Class III (Very Severe/Morbid)', style: 'background-color: #000000; color: #ffffff;' };
     }
 
     function updateHistoryView() {
         const from = document.getElementById('chartFilterFrom').value;
         const to = document.getElementById('chartFilterTo').value;
-        
+
         let filtered = globalHistory;
-        if(from) filtered = filtered.filter(h => h.accurate_date >= from);
-        if(to) filtered = filtered.filter(h => h.accurate_date <= to);
-        
+        if (from) filtered = filtered.filter(h => h.accurate_date >= from);
+        if (to) filtered = filtered.filter(h => h.accurate_date <= to);
+
         renderChartAndTable(filtered);
     }
 
@@ -1275,7 +1334,11 @@ require_once '../../includes/bmi_helper.php';
         // Build History Table
         const tbody = document.querySelector('#historyTable tbody');
         tbody.innerHTML = '';
-        history.forEach(item => {
+        
+        // Always Latest -> Oldest for the table
+        const listItems = [...history].reverse();
+
+        listItems.forEach(item => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td style="padding: 0.5rem; border-top: 1px solid var(--border);">${item.accurate_date}</td>
@@ -1294,53 +1357,87 @@ require_once '../../includes/bmi_helper.php';
         // Chart render
         const labels = history.map(item => item.date);
         const bmiData = history.map(item => item.bmi);
+        const heights = history.map(item => item.height);
+        const weights = history.map(item => item.weight);
         const minBMILine = history.map(() => 18.5);
         const maxBMILine = history.map(() => 24.9);
 
         const ctx = document.getElementById('bmiChart').getContext('2d');
-        if(progressChart) progressChart.destroy();
-        
+        if (progressChart) progressChart.destroy();
+
         progressChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
                 datasets: [
-                {
-                    label: 'Actual BMI',
-                    data: bmiData,
-                    borderColor: '#1a73e8',
-                    backgroundColor: 'rgba(26, 115, 232, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.2,
-                    pointBackgroundColor: '#1a73e8',
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                },
-                {
-                    label: 'Healthy BMI Range',
-                    data: minBMILine,
-                    borderColor: '#0F9D58',
-                    borderWidth: 1.5,
-                    borderDash: [5, 5],
-                    fill: false,
-                    pointRadius: 0
-                },
-                {
-                    label: 'Healthy BMI Max',
-                    data: maxBMILine,
-                    borderColor: '#34A853',
-                    borderWidth: 1.5,
-                    borderDash: [5, 5],
-                    fill: '-1',
-                    backgroundColor: 'rgba(15, 157, 88, 0.05)',
-                    pointRadius: 0
-                }
+                    {
+                        label: 'Actual BMI',
+                        data: bmiData,
+                        heights: heights,
+                        weights: weights,
+                        borderColor: '#0061ff',
+                        backgroundColor: 'rgba(0, 97, 255, 0.1)',
+                        borderWidth: 4,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#0061ff',
+                        pointBorderWidth: 3,
+                        pointRadius: 5,
+                        pointHoverRadius: 8
+                    },
+                    {
+                        label: 'Healthy Range (Min)',
+                        data: minBMILine,
+                        borderColor: '#059669',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Healthy Range (Max)',
+                        data: maxBMILine,
+                        borderColor: '#059669',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: '-1',
+                        backgroundColor: 'rgba(5, 150, 105, 0.05)',
+                        pointRadius: 0
+                    }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            font: { weight: 600 },
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label === 'Actual BMI') {
+                                    const h = context.dataset.heights[context.dataIndex];
+                                    const w = context.dataset.weights[context.dataIndex];
+                                    return [
+                                        `BMI: ${context.parsed.y}`,
+                                        `Height: ${h} cm`,
+                                        `Weight: ${w} kg`
+                                    ];
+                                }
+                                return `${label}: ${context.parsed.y}`;
+                            }
+                        }
+                    }
+                },
                 onClick: (e, items) => {
                     if (items.length > 0) {
                         const index = items[0].index;
@@ -1349,25 +1446,20 @@ require_once '../../includes/bmi_helper.php';
                     }
                 },
                 scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { weight: 600 } }
+                    },
                     y: {
                         beginAtZero: false,
+                        grid: { borderDash: [5, 5], color: '#e3e8ee' },
                         title: {
                             display: true,
-                            text: 'Body Mass Index (kg/m²)'
+                            text: 'BMI (kg/m²)',
+                            font: { weight: 600 }
                         },
-                        suggestedMin: 10,
-                        suggestedMax: 35
-                    }
-                },
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        onClick: (e) => e.stopPropagation(), // Prevent legend toggle
-                        labels: {
-                            filter: function(item, chart) {
-                                return item.text !== 'Healthy BMI Max';
-                            }
-                        }
+                        suggestedMin: 12,
+                        suggestedMax: 30
                     }
                 }
             }
@@ -1409,12 +1501,12 @@ require_once '../../includes/bmi_helper.php';
                 Recorded by ${record.author}
             </div>
         `;
-        
+
         document.getElementById('viewModalEditBtn').onclick = () => {
             document.getElementById('viewAssessmentModal').classList.remove('active');
             openEditAssessmentModal(record.record_id, record.height, record.weight, record.accurate_date);
         };
-        
+
         document.getElementById('viewAssessmentModal').classList.add('active');
     }
 
@@ -1476,7 +1568,7 @@ require_once '../../includes/bmi_helper.php';
             // Reset filter inputs
             document.getElementById('chartFilterFrom').value = '';
             document.getElementById('chartFilterTo').value = '';
-            
+
             renderChartAndTable(globalHistory);
         }
     });
