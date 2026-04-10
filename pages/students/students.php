@@ -462,10 +462,13 @@ require_once '../../includes/bmi_helper.php';
         <div class="header-actions">
             <a href="export_students.php?section=<?php echo urlencode($active_section); ?>" class="btn-outline"><span
                     class="material-icons" style="font-size: 16px;">file_download</span> Export List</a>
+            <?php if ($role === 'Admin'): ?>
             <button class="btn" style="display: flex; align-items: center; gap: 0.5rem;"
                 onclick="document.getElementById('addStudentModal').classList.add('active')"><span
                     class="material-icons" style="font-size: 16px;">add</span> Add New Student</button>
+            <?php endif; ?>
         </div>
+
     </div>
 
     <div class="filter-label">
@@ -540,7 +543,8 @@ require_once '../../includes/bmi_helper.php';
                 <span class="data-count"><?php echo count($students); ?> Total</span>
             </div>
             <div class="data-filters" style="display: flex; gap: 0.5rem; align-items: center; width: 65%;">
-                <input type="text" id="searchInput" placeholder="Search students, LRN..."
+                <input type="text" id="searchInput" placeholder="Search students, ID Number..."
+
                     style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; flex-grow: 1;">
 
                 <select id="bmiFilter" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
@@ -558,7 +562,8 @@ require_once '../../includes/bmi_helper.php';
             <table>
                 <thead>
                     <tr>
-                        <th>LRN</th>
+                        <th>Student ID</th>
+
                         <th>Student Name</th>
                         <th>Dietary Restrictions</th>
                         <th>BMI & Target Weight</th>
@@ -887,12 +892,7 @@ require_once '../../includes/bmi_helper.php';
                 </div>
             </div>
 
-            <div style="display:flex; align-items:center; gap: 1.5rem; margin: 1rem 0;">
-                <label style="display:flex; align-items:center; gap: 0.5rem; font-size: 0.875rem;"><input
-                        type="checkbox" name="is_4ps_beneficiary"> 4Ps Beneficiary</label>
-                <label style="display:flex; align-items:center; gap: 0.5rem; font-size: 0.875rem;"><input
-                        type="checkbox" name="deworming_status"> Dewormed</label>
-            </div>
+            <!-- SBFP Indicators Removed -->
 
             <div class="modal-actions">
                 <button type="button" class="btn-cancel"
@@ -1084,12 +1084,8 @@ require_once '../../includes/bmi_helper.php';
                 </div>
             </div>
 
-            <div style="display:flex; align-items:center; gap: 1.5rem; margin: 1rem 0;">
-                <label style="display:flex; align-items:center; gap: 0.5rem; font-size: 0.875rem;"><input
-                        type="checkbox" name="is_4ps_beneficiary" id="edit_4ps"> 4Ps Beneficiary</label>
-                <label style="display:flex; align-items:center; gap: 0.5rem; font-size: 0.875rem;"><input
-                        type="checkbox" name="deworming_status" id="edit_dewormed"> Dewormed</label>
-            </div>
+            <!-- SBFP Indicators Removed -->
+
 
             <div class="modal-actions">
                 <button type="button" class="btn-cancel"
@@ -1105,11 +1101,14 @@ require_once '../../includes/bmi_helper.php';
         <h2 class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
             <span id="chartModalTitle">Student Progress</span>
             <div style="display:flex; gap: 0.5rem;">
+                <?php if ($role === 'Admin'): ?>
                 <button id="mainEditStudentBtn" class="btn-icon" title="Edit Student Profile"
                     style="color: var(--primary);"><span class="material-icons">edit</span></button>
+                <?php endif; ?>
                 <button class="btn-icon" onclick="closeChartModal()" title="Close"><span
                         class="material-icons">close</span></button>
             </div>
+
         </h2>
         <div style="height: 250px; width: 100%;">
             <canvas id="bmiChart"></canvas>
@@ -1156,9 +1155,12 @@ require_once '../../includes/bmi_helper.php';
         <h2 class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
             Record Details
             <div style="display:flex; gap: 0.5rem;">
+                <?php if ($role === 'Admin'): ?>
                 <button class="btn-icon" id="viewModalEditBtn" style="color: var(--primary);" title="Edit Record">
                     <span class="material-icons">edit</span>
                 </button>
+                <?php endif; ?>
+
                 <button class="btn-icon"
                     onclick="document.getElementById('viewAssessmentModal').classList.remove('active')" title="Close">
                     <span class="material-icons">close</span>
@@ -1254,8 +1256,9 @@ require_once '../../includes/bmi_helper.php';
         document.getElementById('editAssessmentModal').classList.add('active');
     }
 
-    document.getElementById('searchInput').addEventListener('input', filterTable);
     document.getElementById('bmiFilter').addEventListener('change', filterTable);
+
+    const isAdmin = <?php echo json_encode($role === 'Admin'); ?>;
 
     let progressChart = null;
     let currentStudentData = null; // Global tracker for editing
@@ -1330,12 +1333,13 @@ require_once '../../includes/bmi_helper.php';
                 <td style="padding: 0.5rem; border-top: 1px solid var(--border);">${item.weight || '--'} kg</td>
                 <td style="padding: 0.5rem; border-top: 1px solid var(--border); font-weight: 500; color: var(--primary);">${item.bmi || '--'}</td>
                 <td style="padding: 0.5rem; border-top: 1px solid var(--border);">${item.author || '--'}</td>
-                <td style="padding: 0.5rem; border-top: 1px solid var(--border); display: flex; gap: 0.5rem;">
+                <td style="padding: 0.5rem; border-top: 1px solid var(--border); gap: 0.5rem; display: ${isAdmin ? 'flex' : 'none'};">
                     <button class="btn-icon" onclick="openEditAssessmentModal(${item.record_id}, ${item.height}, ${item.weight}, '${item.accurate_date}')" style="color: var(--primary); background: none; border: none; cursor: pointer;"><span class="material-icons" style="font-size: 16px;">edit</span></button>
                     <button class="btn-icon" onclick="deleteRecord(${item.record_id})" style="color: #d93025; background: none; border: none; cursor: pointer;"><span class="material-icons" style="font-size: 16px;">delete</span></button>
                 </td>
             `;
             tbody.appendChild(tr);
+
         });
 
         // Chart render
@@ -1589,8 +1593,9 @@ require_once '../../includes/bmi_helper.php';
             });
     });
 
-    // Edit Student Button (Inside Progress Modal)
-    document.getElementById('mainEditStudentBtn').addEventListener('click', function () {
+    // Edit Student Button (Inside Progress Modal) - Admin only
+    const mainEditStudentBtn = document.getElementById('mainEditStudentBtn');
+    if (mainEditStudentBtn) { mainEditStudentBtn.addEventListener('click', function () {
         if (!currentStudentData) return;
 
         // Fill Edit Modal
@@ -1632,7 +1637,7 @@ require_once '../../includes/bmi_helper.php';
 
         closeChartModal();
         document.getElementById('editStudentModal').classList.add('active');
-    });
+    }); } // end if (mainEditStudentBtn)
 
     // AJAX Edit Student
     document.getElementById('editStudentForm').addEventListener('submit', function (e) {

@@ -5,6 +5,12 @@ require_once '../../includes/bmi_helper.php';
 
 header('Content-Type: application/json');
 
+if (($_SESSION['role'] ?? '') !== 'Admin') {
+    echo json_encode(['success' => false, 'error' => 'Unauthorized: Admins only.']);
+    exit;
+}
+
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $student_id = $_POST['student_id'] ?? '';
     $height = $_POST['height'] ?? '';

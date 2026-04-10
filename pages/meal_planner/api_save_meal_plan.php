@@ -1,4 +1,5 @@
 <?php
+session_start();
 require_once '../../db.php';
 header('Content-Type: application/json');
 
@@ -24,8 +25,12 @@ if ($action === 'mark_served') {
     exit;
 }
 
-// --- ACTION: Unserve (Unlock the day) ---
+// --- ACTION: Unserve (Unlock the day) --- ADMIN ONLY ---
 if ($action === 'unserve') {
+    if (($_SESSION['role'] ?? '') !== 'Admin') {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized: Only administrators can unlock served plans.']);
+        exit;
+    }
     $conn->query("UPDATE daily_meal_plans SET is_served = 0 WHERE scheduled_date = '$date'");
     echo json_encode(['success' => true, 'message' => 'Day unlocked successfully.']);
     exit;

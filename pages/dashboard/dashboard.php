@@ -191,15 +191,22 @@ $ledger_res = $conn->query("SELECT * FROM budget_logs ORDER BY created_at DESC L
         </div>
 
         <div class="widget-panel kpi-col">
-            <div class="widget-title"><span class="material-icons" style="font-size:16px;">assignment_turned_in</span> SBFP Compliance</div>
-            <div class="kpi-val">100%</div>
-            <div class="kpi-sub">Forms 1-7 Ready For Generation</div>
-            <div style="margin-top: 1rem; display: flex; gap: 0.25rem;">
-                <?php for($i=1; $i<=7; $i++): ?>
-                <div title="Form <?= $i ?>" style="flex:1; height: 6px; background: var(--success); border-radius: 3px;"></div>
-                <?php endfor; ?>
+            <div class="widget-title"><span class="material-icons" style="font-size:16px;">account_balance_wallet</span> Budget Utilization</div>
+            <?php
+            $res_budget = $conn->query("SELECT (SELECT setting_value FROM settings WHERE setting_key='total_allocated_budget') as alloc, (SELECT COALESCE(SUM(actual_cost),0) FROM meal_plan) + (SELECT COALESCE(SUM(amount),0) FROM budget_logs) as spent");
+            $brow = $res_budget->fetch_assoc();
+            $alloc = (float)($brow['alloc'] ?? 500000);
+            $spent = (float)($brow['spent'] ?? 0);
+            $pct = $alloc > 0 ? round(($spent / $alloc) * 100) : 0;
+            ?>
+            <div class="kpi-val">&#8369; <?= number_format($alloc - $spent, 0) ?></div>
+            <div class="kpi-sub">Remaining of &#8369; <?= number_format($alloc, 0) ?> Budget</div>
+            <div style="margin-top: 1rem; background: var(--border); border-radius: 4px; height: 6px; overflow: hidden;">
+                <div style="height: 100%; width: <?= min(100, $pct) ?>%; background: <?= $pct > 80 ? 'var(--error)' : 'var(--primary)' ?>; border-radius: 4px;"></div>
             </div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.4rem;"><?= $pct ?>% utilized</div>
         </div>
+
 
         <!-- Middle Row: BMI & Today's Meal -->
         <div class="widget-panel bmi-col">
@@ -336,7 +343,7 @@ $ledger_res = $conn->query("SELECT * FROM budget_logs ORDER BY created_at DESC L
                 <div class="mgmt-entry">
                     <div>
                         <div style="font-weight: 800; color: var(--text-main);"><?= $log['category'] ?></div>
-                        <div style="font-size: 0.7rem; color: var(--text-muted);"><?= date('M d, Y', strtotime($log['created_at'])) ?> &middot; Ref: <?= substr(md5($log['log_id']), 0, 6) ?></div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted);"><?= date('M d, Y', strtotime($log['created_at'])) ?> &middot; Ref: <?= substr(md5($log['id']), 0, 6) ?></div>
                     </div>
                     <div style="font-weight: 900; color: var(--primary);">&#8369;<?= number_format($log['amount'], 2) ?></div>
                 </div>

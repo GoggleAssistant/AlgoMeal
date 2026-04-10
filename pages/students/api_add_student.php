@@ -4,6 +4,12 @@ require_once '../../db.php';
 
 header('Content-Type: application/json');
 
+if (($_SESSION['role'] ?? '') !== 'Admin') {
+    echo json_encode(['success' => false, 'error' => 'Unauthorized: Administrator privileges required to manage student profiles.']);
+    exit;
+}
+
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lrn = trim($_POST['student_id'] ?? '');
     $last_name = trim($_POST['last_name'] ?? '');
@@ -13,10 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $grade_level = $_POST['grade_level'] ?? '';
     $section = $_POST['section'] ?? '';
     $manual_section = trim($_POST['manual_section'] ?? '');
-    $is_4ps = isset($_POST['is_4ps_beneficiary']) ? 1 : 0;
     $min_target_weight = $_POST['min_target_weight'] ?? 0;
     $max_target_weight = $_POST['max_target_weight'] ?? 0;
-    $deworming = isset($_POST['deworming_status']) ? 1 : 0;
 
     // Use manual section if provided
     if (trim($section) === 'Other' && !empty($manual_section)) {
@@ -31,13 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn->begin_transaction();
 
     try {
-        $stmt = $conn->prepare("INSERT INTO student (student_id, last_name, first_name, sex, birth_date, grade_level, section, is_4ps_beneficiary, min_target_weight, max_target_weight, deworming_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO student (student_id, last_name, first_name, sex, birth_date, grade_level, section, min_target_weight, max_target_weight) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
         if(!$stmt) throw new Exception("Statement prep failed: " . $conn->error);
 
-        // Corrected bind_param: s s s s s s s i d d i (7 strings, 1 int, 2 doubles, 1 int)
-        $stmt->bind_param("sssssssiddi", $lrn, $last_name, $first_name, $sex, $birth_date, $grade_level, $section, $is_4ps, $min_target_weight, $max_target_weight, $deworming);
+        // Corrected bind_param: s s s s s s s d d (7 strings, 2 doubles)
+        $stmt->bind_param("ssssssisdd", $lrn, $last_name, $first_name, $sex, $birth_date, $grade_level, $section, $min_target_weight, $max_target_weight);
         
-        if(!$stmt->execute()) throw new Exception("Failed to add student. LRN may already exist.");
+        if(!$stmt->execute()) throw new Exception("Failed to add student. ID may already exist.");
 
         // Handle Dietary Restrictions (Allergies)
         if (isset($_POST['allergies']) && is_array($_POST['allergies'])) {

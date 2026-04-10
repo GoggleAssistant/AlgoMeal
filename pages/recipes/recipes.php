@@ -3,6 +3,7 @@
 <?php
 $page_title = 'Recipe Database';
 require_once '../../includes/topbar.php';
+$isAdmin = ($role === 'Admin');
 ?>
 
 <style>
@@ -66,17 +67,20 @@ require_once '../../includes/topbar.php';
 <div class="content">
     <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
         <div>
-            <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.25rem;">DepEd Approved Recipes</h2>
-            <p style="color: var(--text-muted); font-size: 0.875rem;">Explore nutritional-compliant meals for school feeding programs.</p>
+            <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.25rem;">Recipe Database</h2>
+            <p style="color: var(--text-muted); font-size: 0.875rem;">Browse and manage nutritional-compliant meal recipes.</p>
+
         </div>
         <div style="display: flex; gap: 0.75rem;">
             <div style="position: relative; width: 300px;">
                 <span class="material-icons" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); font-size: 1.25rem; color: var(--text-muted);">search</span>
                 <input type="text" id="recipeSearch" placeholder="Search recipes..." style="width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem; outline: none; transition: all 0.2s;">
             </div>
+            <?php if ($isAdmin): ?>
             <button class="btn" style="background: var(--primary); color: white; display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.25rem; font-weight: 600;" onclick="openAddRecipeModal()">
                 <span class="material-icons">add</span> New Recipe
             </button>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -216,7 +220,10 @@ require_once '../../includes/topbar.php';
                 <div id="modalCost" style="font-size: 1.25rem; font-weight: 900; color: var(--text-main);"></div>
             </div>
             <div style="display: flex; gap: 0.75rem;">
-                <button class="btn" style="background: white; border: 2px solid var(--border); color: var(--text-main); font-weight: 700;" onclick="openEditRecipe()">Modify Details</button>
+                <?php if ($isAdmin): ?>
+                <button id="btnModifyRecipe" class="btn" style="background: white; border: 2px solid var(--border); color: var(--text-main); font-weight: 700;" onclick="openEditRecipe()">Modify Details</button>
+                <button id="btnDeleteRecipe" class="btn" style="background: #fee2e2; border: 2px solid #fecaca; color: #b91c1c; font-weight: 700;" onclick="deleteCurrentRecipe()">Delete Recipe</button>
+                <?php endif; ?>
                 <button class="btn" style="background: var(--text-main); color: white; padding: 0.75rem 2rem;" onclick="closeModal('recipeDetailModal')">Close Details</button>
             </div>
         </div>
@@ -227,6 +234,8 @@ require_once '../../includes/topbar.php';
     let allRecipes = [];
     let currentViewingRecipe = null;
     let restrictionList = [];
+    const isAdmin = <?php echo json_encode($isAdmin); ?>;
+
 
     function selectSwatch(color, el) {
         document.getElementById('form_color').value = color;
@@ -304,7 +313,8 @@ require_once '../../includes/topbar.php';
         document.getElementById('formInstructionsList').innerHTML = '';
         addIngredientRow();
         addInstructionRow();
-        document.querySelector('#addRecipeModal h2').innerText = 'New DepEd Recipe';
+        document.querySelector('#addRecipeModal h2').innerText = 'New Recipe';
+
         document.getElementById('addRecipeModal').classList.add('active');
     }
 
@@ -413,6 +423,20 @@ require_once '../../includes/topbar.php';
     }
 
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    function deleteCurrentRecipe() {
+        if (!currentViewingRecipe) return;
+        if (!confirm(`Are you sure you want to permanently delete "${currentViewingRecipe.recipe_name}"? This cannot be undone.`)) return;
+        const fd = new FormData();
+        fd.append('action', 'delete');
+        fd.append('recipe_id', currentViewingRecipe.recipe_id);
+        fetch('api_save_recipe.php', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) { closeModal('recipeDetailModal'); loadRecipes(); }
+                else alert('Delete failed: ' + (data.message || 'Unknown error'));
+            });
+    }
 
     document.getElementById('recipeForm').addEventListener('submit', async function(e) {
         e.preventDefault();

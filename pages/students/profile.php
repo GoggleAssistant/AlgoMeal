@@ -94,7 +94,8 @@ require_once '../../includes/topbar.php';
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 2.5rem; margin-top: 2rem;">
                 <div>
-                    <div style="font-size: 0.70rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.25rem;">Student LRN</div>
+                    <div style="font-size: 0.70rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.25rem;">Student ID</div>
+
                     <div style="font-weight: 700; font-family: 'Roboto Mono', monospace; font-size: 1.1rem; color: var(--primary);"><?php echo $student['student_id']; ?></div>
                 </div>
                 <div>
@@ -278,7 +279,8 @@ require_once '../../includes/topbar.php';
             <h2 class="modal-title">Edit Student Profile</h2>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
-                    <label style="display:block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.4rem;">LRN</label>
+                    <label style="display:block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.4rem;">Student ID</label>
+
                     <input type="text" name="student_id" value="<?php echo $student['student_id']; ?>" required style="width:100%; padding:0.6rem; border:1px solid var(--border); border-radius:6px;">
                 </div>
                 <div>
@@ -327,10 +329,8 @@ require_once '../../includes/topbar.php';
                     <?php endforeach; ?>
                 </div>
             </div>
-            <div style="display:flex; gap:1.5rem; margin-bottom: 1.5rem;">
-                <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem;"><input type="checkbox" name="is_4ps_beneficiary" value="1" <?php echo $student['is_4ps_beneficiary'] ? 'checked' : ''; ?>> 4Ps Beneficiary</label>
-                <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem;"><input type="checkbox" name="deworming_status" value="1" <?php echo $student['deworming_status'] ? 'checked' : ''; ?>> Dewormed</label>
-            </div>
+            <!-- SBFP Indicators Removed -->
+
             <div class="modal-actions">
                 <button type="button" class="btn-cancel" onclick="closeProfileModal('profileEditStudentModal')">Cancel</button>
                 <button type="submit" class="btn">Apply Changes</button>

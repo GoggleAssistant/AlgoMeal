@@ -5,6 +5,8 @@
 $page_title = 'Algorithm & Planning';
 require_once '../../includes/topbar.php';
 require_once '../../db.php';
+$isAdmin = ($role === 'Admin');
+
 
 // Get Recipes
 $res_recipes = $conn->query("SELECT r.*, GROUP_CONCAT(DISTINCT dr.restriction_name) as allergens, GROUP_CONCAT(DISTINCT rat.restriction_id) as restriction_ids FROM recipes r LEFT JOIN recipe_allergen_tags rat ON r.recipe_id = rat.recipe_id LEFT JOIN dietary_restrictions dr ON rat.restriction_id = dr.restriction_id GROUP BY r.recipe_id ORDER BY r.recipe_name");
@@ -250,7 +252,9 @@ $recipes_json = json_encode($recipes);
 
 <script>
     const recipes = <?= $recipes_json ?>;
+    const isAdmin = <?php echo json_encode($isAdmin); ?>;
     let distributionData = null;
+
     let selectedDateStr = null;
     let currentBudgetLimit = 25.00;
 
@@ -682,8 +686,12 @@ $recipes_json = json_encode($recipes);
         
         document.getElementById('serveBtn').style.display = 'none';
         document.getElementById('undeployBtn').style.display = 'none';
-        document.getElementById('unserveBtn').style.display = 'flex';
+        // Only admins can unlock a served plan
+        if (isAdmin) {
+            document.getElementById('unserveBtn').style.display = 'flex';
+        }
         document.getElementById('engineStatusIndicator').innerHTML =
+
             '<span style="color:#16a34a; font-weight:800;"><span class="material-icons" style="font-size:14px; vertical-align:middle;">lock</span> This day has been served and is locked.</span>';
         // Disable all swap buttons
 

@@ -1,7 +1,13 @@
 <?php
+session_start();
 require_once '../../db.php';
 
 header('Content-Type: application/json');
+
+if (($_SESSION['role'] ?? '') !== 'Admin') {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized: Administrator privileges required to manage recipes.']);
+    exit;
+}
 
 $action = $_POST['action'] ?? 'add';
 $recipe_id = $_POST['recipe_id'] ?? null;
@@ -16,6 +22,24 @@ $ing_amounts = $_POST['ing_amounts'] ?? [];
 $ing_units = $_POST['ing_units'] ?? [];
 $instructions = $_POST['instructions'] ?? [];
 $hex_color = $_POST['hex_color'] ?? '#3b82f6';
+
+if ($action === 'delete') {
+    if (empty($recipe_id)) {
+        echo json_encode(['success' => false, 'message' => 'Missing recipe ID.']);
+        exit;
+    }
+    $conn->query("DELETE FROM recipe_allergen_tags WHERE recipe_id = '$recipe_id'");
+    $conn->query("DELETE FROM recipe_ingredients WHERE recipe_id = '$recipe_id'");
+    $conn->query("DELETE FROM recipe_instructions WHERE recipe_id = '$recipe_id'");
+    $del = $conn->prepare("DELETE FROM recipes WHERE recipe_id = ?");
+    $del->bind_param("s", $recipe_id);
+    if ($del->execute()) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => $conn->error]);
+    }
+    exit;
+}
 
 if ($action === 'add') {
     // Generate a new REC ID

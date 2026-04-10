@@ -14,6 +14,7 @@ $role = $_SESSION['role'] ?? 'Faculty';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,17 +32,20 @@ $role = $_SESSION['role'] ?? 'Faculty';
         :root {
             --bg-color: #f0f2f5;
             --surface: #ffffff;
-            --primary: #0061ff; /* Modern Vibrant Blue */
+            --primary: #0061ff;
+            /* Modern Vibrant Blue */
             --primary-hover: #0052d9;
             --secondary: #ebf3ff;
-            --text-main: #1a1f36; /* Deep UI Slate */
+            --text-main: #1a1f36;
+            /* Deep UI Slate */
             --text-muted: #697386;
             --border: #e3e8ee;
-            --success: #059669; /* Emeral Green */
+            --success: #059669;
+            /* Emeral Green */
             --warning: #d97706;
             --error: #dc2626;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --radius: 12px;
         }
 
@@ -82,11 +86,13 @@ $role = $_SESSION['role'] ?? 'Faculty';
         }
 
         .sidebar-header .btn-text {
-            color: #000000; /* Black Hamburger */
+            color: #000000;
+            /* Black Hamburger */
             margin-right: 0.75rem;
             background: none;
             border: none;
-            cursor: default; /* Non-interactive but preserved layout */
+            cursor: default;
+            /* Non-interactive but preserved layout */
             padding: 4px;
             display: flex;
             align-items: center;
@@ -195,7 +201,7 @@ $role = $_SESSION['role'] ?? 'Faculty';
             font-weight: 700;
             color: var(--text-main);
         }
-        
+
         .sidebar-user-role {
             font-size: 0.7rem;
             color: var(--text-muted);
@@ -213,7 +219,9 @@ $role = $_SESSION['role'] ?? 'Faculty';
             min-height: 100vh;
         }
 
-        .topbar { display: none; }
+        .topbar {
+            display: none;
+        }
 
         /* Dashboard Content */
         .content {
@@ -333,7 +341,10 @@ $role = $_SESSION['role'] ?? 'Faculty';
         /* Modal Sub-system */
         .modal-overlay {
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background-color: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
@@ -343,31 +354,76 @@ $role = $_SESSION['role'] ?? 'Faculty';
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
         }
-        .modal-overlay.active { opacity: 1; visibility: visible; }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
         .modal {
             background-color: var(--surface);
             border-radius: 8px;
             padding: 1.5rem;
             width: 90%;
             max-width: 400px;
-            box-shadow: 0 11px 15px -7px rgba(0,0,0,0.2), 0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12);
+            box-shadow: 0 11px 15px -7px rgba(0, 0, 0, 0.2), 0 24px 38px 3px rgba(0, 0, 0, 0.14), 0 9px 46px 8px rgba(0, 0, 0, 0.12);
             transform: translateY(-20px);
             transition: transform 0.3s ease;
         }
-        .modal-overlay.active .modal { transform: translateY(0); }
-        .modal-title { font-size: 1.25rem; font-weight: 500; margin-bottom: 1rem; color: var(--text-main); }
-        .modal-text { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem; }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+
+        .modal-overlay.active .modal {
+            transform: translateY(0);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            color: var(--text-main);
+        }
+
+        .modal-text {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
         .btn-cancel {
-            color: var(--primary); background: transparent; border: none; padding: 0.5rem 1rem;
-            text-transform: uppercase; font-weight: 500; cursor: pointer;
+            color: var(--primary);
+            background: transparent;
+            border: none;
+            padding: 0.5rem 1rem;
+            text-transform: uppercase;
+            font-weight: 500;
+            cursor: pointer;
         }
-        .btn-cancel:hover { background-color: rgba(26,115,232,0.04); }
+
+        .btn-cancel:hover {
+            background-color: rgba(26, 115, 232, 0.04);
+        }
+
         .btn-confirm {
-            background-color: #d93025; color: #fff; border: none; padding: 0.5rem 1rem;
-            border-radius: 4px; text-transform: uppercase; font-weight: 500; cursor: pointer; text-decoration: none;
+            background-color: #d93025;
+            color: #fff;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
         }
-        .btn-confirm:hover { background-color: #c5221f; }
+
+        .btn-confirm:hover {
+            background-color: #c5221f;
+        }
     </style>
 </head>
+
 <body>

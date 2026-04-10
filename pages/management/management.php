@@ -4,6 +4,8 @@
 $page_title = 'System Management';
 require_once '../../includes/topbar.php';
 require_once '../../db.php';
+$isAdmin = ($role === 'Admin');
+
 
 // Fetch Settings
 $res_settings = $conn->query("SELECT * FROM settings");
@@ -79,7 +81,8 @@ while($row = $res_cat->fetch_assoc()) {
     <div class="mgmt-header">
         <div class="mgmt-title">
             <h2>Budget Allocation & Control</h2>
-            <p>Administer fiscal limits, track non-meal overhead, and ensure SBFP compliance.</p>
+            <p>Administer fiscal limits and track non-meal overhead expenditures.</p>
+
         </div>
         <div style="display: flex; gap: 0.75rem;">
             <button class="btn btn-outline" style="padding: 0.75rem 1.5rem;" onclick="location.reload()">
@@ -92,7 +95,8 @@ while($row = $res_cat->fetch_assoc()) {
         <div class="kpi-card">
             <div class="kpi-label">Allocated Fiscal Budget</div>
             <div class="kpi-value">&#8369; <?= number_format($allocated_budget, 2) ?></div>
-            <div class="kpi-subtext">Approved Budget for SY 2026-2027</div>
+            <div class="kpi-subtext">Total Annual Budget Allocation</div>
+
         </div>
         <div class="kpi-card">
             <div class="kpi-label">Total Cumulative Spend</div>
@@ -114,6 +118,7 @@ while($row = $res_cat->fetch_assoc()) {
                     <span class="material-icons">receipt_long</span>
                     <h3>Log Manual Allocation</h3>
                 </div>
+                <?php if ($isAdmin): ?>
                 <div class="logging-form">
                     <div class="form-grid">
                         <div class="form-field">
@@ -135,6 +140,13 @@ while($row = $res_cat->fetch_assoc()) {
                     </div>
                     <button class="btn" style="width: 100%; background: var(--text-main); color: white;" onclick="submitLog()">Record Expenditure</button>
                 </div>
+                <?php else: ?>
+                <div style="background: #f8fafc; border: 1px dashed var(--border); border-radius: 12px; padding: 1.5rem; text-align: center; color: var(--text-muted);">
+                    <span class="material-icons" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">lock</span>
+                    <div style="font-size: 0.8rem; font-weight: 700;">Admin Access Required</div>
+                    <div style="font-size: 0.75rem;">Only administrators can record expenditures.</div>
+                </div>
+                <?php endif; ?>
 
                 <div class="card-header" style="border:none; margin-bottom: 0.5rem; padding-bottom: 0;">
                     <span class="material-icons" style="font-size: 1.1rem;">settings</span>
@@ -200,28 +212,10 @@ while($row = $res_cat->fetch_assoc()) {
                 </table>
             </div>
 
-            <div class="dashboard-card">
-                <div class="card-header" style="justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <span class="material-icons">description</span>
-                        <h3>SBFP Report Suite</h3>
-                    </div>
-                    <button class="btn btn-outline" style="font-size: 0.7rem; padding: 0.4rem 0.8rem;">Full Archive</button>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <div style="padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                        <span class="material-icons" style="color: #ef4444; font-size: 1.2rem;">picture_as_pdf</span>
-                        <div style="font-size: 0.75rem; font-weight: 700;">SBFP Form 1</div>
-                    </div>
-                    <div style="padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                        <span class="material-icons" style="color: #10b981; font-size: 1.2rem;">table_view</span>
-                        <div style="font-size: 0.75rem; font-weight: 700;">SBFP Form 4</div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>
+
 
 <script>
     // Allocation Chart

@@ -4,6 +4,12 @@ require_once '../../db.php';
 
 header('Content-Type: application/json');
 
+if (($_SESSION['role'] ?? '') !== 'Admin') {
+    echo json_encode(['success' => false, 'error' => 'Unauthorized: Admins only.']);
+    exit;
+}
+
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Delete record requires ID
     $record_id = $_POST['record_id'] ?? '';

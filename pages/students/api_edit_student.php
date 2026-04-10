@@ -4,6 +4,12 @@ require_once '../../db.php';
 
 header('Content-Type: application/json');
 
+if (($_SESSION['role'] ?? '') !== 'Admin') {
+    echo json_encode(['success' => false, 'error' => 'Unauthorized: Administrator privileges required to manage student profiles.']);
+    exit;
+}
+
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $original_lrn = $_POST['original_lrn'] ?? '';
     $new_lrn = trim($_POST['student_id'] ?? '');
@@ -31,11 +37,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $min_target = $_POST['min_target_weight'] ?? 0;
         $max_target = $_POST['max_target_weight'] ?? 0;
 
-        $stmt = $conn->prepare("UPDATE student SET student_id = ?, last_name = ?, first_name = ?, sex = ?, birth_date = ?, grade_level = ?, section = ?, is_4ps_beneficiary = ?, deworming_status = ?, min_target_weight = ?, max_target_weight = ? WHERE student_id = ?");
+        $stmt = $conn->prepare("UPDATE student SET student_id = ?, last_name = ?, first_name = ?, sex = ?, birth_date = ?, grade_level = ?, section = ?, min_target_weight = ?, max_target_weight = ? WHERE student_id = ?");
         if(!$stmt) throw new Exception("Prepare failed: " . $conn->error);
         
-        // s (new_lrn), s (last), s (first), s (sex), s (birth), s (grade), s (section), i (4ps), i (deworm), d (min), d (max), s (orig_lrn)
-        $stmt->bind_param("sssssssiidds", $new_lrn, $last_name, $first_name, $sex, $birth_date, $grade_level, $section, $is_4ps, $deworming, $min_target, $max_target, $original_lrn);
+        // s (new_lrn), s (last), s (first), s (sex), s (birth), s (grade), s (section), d (min), d (max), s (orig_lrn)
+        $stmt->bind_param("ssssssisds", $new_lrn, $last_name, $first_name, $sex, $birth_date, $grade_level, $section, $min_target, $max_target, $original_lrn);
         
         if(!$stmt->execute()) throw new Exception("Failed to update student profile. LRN might be taken.");
 
