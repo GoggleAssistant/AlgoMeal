@@ -40,8 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare("UPDATE student SET student_id = ?, last_name = ?, first_name = ?, sex = ?, birth_date = ?, grade_level = ?, section = ?, min_target_weight = ?, max_target_weight = ? WHERE student_id = ?");
         if(!$stmt) throw new Exception("Prepare failed: " . $conn->error);
         
-        // s (new_lrn), s (last), s (first), s (sex), s (birth), s (grade), s (section), d (min), d (max), s (orig_lrn)
-        $stmt->bind_param("ssssssisds", $new_lrn, $last_name, $first_name, $sex, $birth_date, $grade_level, $section, $min_target, $max_target, $original_lrn);
+        // s (new_id), s (last), s (first), s (sex), s (birth), s (grade), s (section), d (min), d (max), s (orig_id)
+        $stmt->bind_param("sssssssdds", $new_lrn, $last_name, $first_name, $sex, $birth_date, $grade_level, $section, $min_target, $max_target, $original_lrn);
         
         if(!$stmt->execute()) throw new Exception("Failed to update student profile. LRN might be taken.");
 
@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $conn->commit();
-        echo json_encode(['success' => true]);
+        echo json_encode(['success' => true, 'new_lrn' => $new_lrn]);
     } catch (Exception $e) {
         $conn->rollback();
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);

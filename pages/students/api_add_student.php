@@ -38,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare("INSERT INTO student (student_id, last_name, first_name, sex, birth_date, grade_level, section, min_target_weight, max_target_weight) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
         if(!$stmt) throw new Exception("Statement prep failed: " . $conn->error);
 
-        // Corrected bind_param: s s s s s s s d d (7 strings, 2 doubles)
-        $stmt->bind_param("ssssssisdd", $lrn, $last_name, $first_name, $sex, $birth_date, $grade_level, $section, $min_target_weight, $max_target_weight);
+        // Corrected bind_param: s (id), s (last), s (first), s (sex), s (birth), s (grade), s (section), d (min), d (max)
+        $stmt->bind_param("sssssssdd", $lrn, $last_name, $first_name, $sex, $birth_date, $grade_level, $section, $min_target_weight, $max_target_weight);
         
         if(!$stmt->execute()) throw new Exception("Failed to add student. ID may already exist.");
 

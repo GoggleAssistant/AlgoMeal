@@ -632,9 +632,9 @@ require_once '../../includes/bmi_helper.php';
                                             <?php echo strtoupper(substr($st['first_name'], 0, 1)); ?>
                                         </div>
                                         <div class="student-info">
-                                            <a href="profile.php?lrn=<?php echo urlencode($st['student_id']); ?>" class="student-name-link" style="text-decoration: none; color: inherit; font-weight: 700; transition: color 0.2s;">
+                                            <div class="student-name-link" style="text-decoration: none; color: inherit; font-weight: 700;">
                                                 <?php echo htmlspecialchars($st['first_name'] . ' ' . $st['last_name']); ?>
-                                            </a>
+                                            </div>
                                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem;">
                                                 <?php echo $st['current_height'] ?: '--'; ?> cm •
                                                 <?php echo $st['current_weight'] ?: '--'; ?> kg
@@ -671,12 +671,10 @@ require_once '../../includes/bmi_helper.php';
                                             data-name="<?php echo htmlspecialchars($st['first_name'] . ' ' . $st['last_name']); ?>"
                                             data-fname="<?php echo htmlspecialchars($st['first_name']); ?>"
                                             data-lname="<?php echo htmlspecialchars($st['last_name']); ?>"
-                                            data-lrn="<?php echo htmlspecialchars($st['student_id']); ?>"
+                                            data-student_id="<?php echo htmlspecialchars($st['student_id']); ?>"
                                             data-sex="<?php echo $st['sex']; ?>" data-birth="<?php echo $st['birth_date']; ?>"
                                             data-grade="<?php echo htmlspecialchars($st['grade_level']); ?>"
                                             data-section="<?php echo htmlspecialchars($st['section']); ?>"
-                                            data-4ps="<?php echo $st['is_4ps_beneficiary']; ?>"
-                                            data-dewormed="<?php echo $st['deworming_status']; ?>"
                                             data-allergens="<?php echo $st['allergen_ids']; ?>"
                                             data-history="<?php echo $chartJSON; ?>"
                                             data-status="<?php echo $bmiData['label']; ?>"
@@ -684,7 +682,7 @@ require_once '../../includes/bmi_helper.php';
                                             style="font-size: 0.75rem; padding: 0.25rem 0.5rem; text-transform:none; border: 1px solid var(--border); border-radius:4px;">Show
                                             Progress</button>
                                         <button class="btn-text add-assessment-btn"
-                                            data-lrn="<?php echo htmlspecialchars($st['student_id']); ?>"
+                                            data-student_id="<?php echo htmlspecialchars($st['student_id']); ?>"
                                             data-height="<?php echo $st['current_height'] ?? ''; ?>"
                                             data-weight="<?php echo $st['current_weight'] ?? ''; ?>"
                                             data-min-target="<?php echo $st['min_target_weight']; ?>"
@@ -1087,11 +1085,17 @@ require_once '../../includes/bmi_helper.php';
             <!-- SBFP Indicators Removed -->
 
 
-            <div class="modal-actions">
-                <button type="button" class="btn-cancel"
-                    onclick="document.getElementById('editStudentModal').classList.remove('active')">Cancel</button>
-                <button type="submit" class="btn" style="background: var(--primary); color: white;">Save
-                    Changes</button>
+            <div class="modal-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem;">
+                <button type="button" class="btn" onclick="deleteStudentAdmin()" 
+                        style="background: none; border: 1px solid #d93025; color: #d93025; padding: 0.5rem 1rem; border-radius: 4px; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: background 0.2s;">
+                    <span class="material-icons" style="font-size: 18px;">delete</span>
+                    Delete Student
+                </button>
+                <div style="display: flex; gap: 1rem;">
+                    <button type="button" class="btn-cancel"
+                        onclick="document.getElementById('editStudentModal').classList.remove('active')">Cancel</button>
+                    <button type="submit" class="btn" style="background: var(--primary); color: white; padding: 0.5rem 1.5rem; border-radius: 4px;">Save Changes</button>
+                </div>
             </div>
         </form>
     </div>
@@ -1454,6 +1458,28 @@ require_once '../../includes/bmi_helper.php';
         });
     }
 
+    function toggleManualSection(val) {
+        const input = document.getElementById('manualSectionInput');
+        if (val === "Other") {
+            input.style.display = "block";
+            input.setAttribute('required', 'required');
+        } else {
+            input.style.display = "none";
+            input.removeAttribute('required');
+        }
+    }
+
+    function toggleManualSectionEdit(val) {
+        const input = document.getElementById('editManualSectionInput');
+        if (val === "Other") {
+            input.style.display = "block";
+            input.setAttribute('required', 'required');
+        } else {
+            input.style.display = "none";
+            input.removeAttribute('required');
+        }
+    }
+
     function refreshTableSilent(activeModalToClose = null) {
         if (activeModalToClose) document.getElementById(activeModalToClose).classList.remove('active');
 
@@ -1503,7 +1529,7 @@ require_once '../../includes/bmi_helper.php';
         // Add Assessment Button
         const addBtn = e.target.closest('.add-assessment-btn');
         if (addBtn) {
-            document.getElementById('assessLrn').value = addBtn.getAttribute('data-lrn');
+            document.getElementById('assessLrn').value = addBtn.getAttribute('data-student_id');
             document.getElementById('assess_height').value = addBtn.getAttribute('data-height');
             document.getElementById('assess_weight').value = addBtn.getAttribute('data-weight');
             document.getElementById('assess_min_target_weight').value = addBtn.getAttribute('data-min-target');
@@ -1520,15 +1546,13 @@ require_once '../../includes/bmi_helper.php';
 
             // Capture data for "Edit Student" button to use later
             currentStudentData = {
-                id: progBtn.getAttribute('data-lrn'),
+                id: progBtn.getAttribute('data-student_id'),
                 fname: progBtn.getAttribute('data-fname'),
                 lname: progBtn.getAttribute('data-lname'),
                 sex: progBtn.getAttribute('data-sex'),
                 birth: progBtn.getAttribute('data-birth'),
                 grade: progBtn.getAttribute('data-grade'),
                 section: progBtn.getAttribute('data-section'),
-                is_4ps: progBtn.getAttribute('data-4ps'),
-                dewormed: progBtn.getAttribute('data-dewormed'),
                 allergens: progBtn.getAttribute('data-allergens') ? progBtn.getAttribute('data-allergens').split(',') : []
             };
 
@@ -1627,9 +1651,6 @@ require_once '../../includes/bmi_helper.php';
             sectManual.style.display = "none";
         }
 
-        document.getElementById('edit_4ps').checked = currentStudentData.is_4ps == "1";
-        document.getElementById('edit_dewormed').checked = currentStudentData.dewormed == "1";
-
         // Handle Allergies
         document.querySelectorAll('.edit-allergy-cb').forEach(cb => {
             cb.checked = currentStudentData.allergens.includes(cb.value);
@@ -1686,6 +1707,30 @@ require_once '../../includes/bmi_helper.php';
                 if (data.success) refreshTableSilent('chartModal');
                 else alert('Error deleting: ' + data.error);
             });
+    }
+
+    window.deleteStudentAdmin = function() {
+        if (!currentStudentData || !currentStudentData.id) return;
+        
+        const fullName = `${currentStudentData.fname} ${currentStudentData.lname}`;
+        if (!confirm(`CAUTION: Are you sure you want to PERMANENTLY delete ${fullName}?\n\nThis will also remove all their nutritional history and meal plans. This action cannot be undone.`)) return;
+
+        const fd = new FormData();
+        fd.append('student_id', currentStudentData.id);
+
+        fetch('api_delete_student.php', {
+            method: 'POST',
+            body: fd
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Student deleted successfully.');
+                location.reload();
+            } else {
+                alert('Error deleting student: ' + data.error);
+            }
+        });
     }
 </script>
 
