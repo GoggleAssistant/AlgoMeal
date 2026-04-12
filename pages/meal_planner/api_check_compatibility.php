@@ -40,13 +40,34 @@ while($s = $res_students->fetch_assoc()) {
     if (empty($s['student_restrictions'])) continue;
 
     $s_res = explode(',', $s['student_restrictions']);
-    $intersect = array_intersect($s_res, $recipe_restrictions);
     
-    if (!empty($intersect)) {
+    $student_triggers = [];
+
+    foreach ($s_res as $res) {
+        if ($res === 'Halal') {
+            if (in_array('Non-Halal', $recipe_restrictions)) {
+                $student_triggers[] = 'Contains Pork/Non-Halal';
+            }
+        } elseif ($res === 'Vegan') {
+            if (!in_array('Vegan', $recipe_restrictions) && !in_array('Vegetarian', $recipe_restrictions)) {
+                $student_triggers[] = 'Not Vegan/Vegetarian';
+            }
+        } elseif ($res === 'Vegetarian') {
+            if (!in_array('Vegetarian', $recipe_restrictions) && !in_array('Vegan', $recipe_restrictions)) {
+                $student_triggers[] = 'Not Vegetarian';
+            }
+        } else {
+            if (in_array($res, $recipe_restrictions)) {
+                $student_triggers[] = $res;
+            }
+        }
+    }
+
+    if (!empty($student_triggers)) {
         $conflicts[] = [
             'name' => $s['first_name'] . ' ' . $s['last_name'],
             'id' => $s['student_id'],
-            'triggers' => array_values($intersect)
+            'triggers' => $student_triggers
         ];
     }
 }

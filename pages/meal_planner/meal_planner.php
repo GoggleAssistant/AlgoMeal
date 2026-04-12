@@ -284,10 +284,25 @@ $recipes_json = json_encode($recipes);
     }
 
     function checkStudentConflict(student, recipeId) {
-        if (!student.restriction_ids || !student.restriction_ids.length) return false;
-        const reqs = Array.isArray(student.restriction_ids) ? student.restriction_ids.map(String) : student.restriction_ids.toString().split(',');
-        const recReqs = recipeRestrictions[recipeId] || [];
-        return reqs.some(r => recReqs.includes(r));
+        if (!student.restriction_names) return false;
+        const reqs = student.restriction_names.split(',');
+        const rec = recipes.find(r => r.recipe_id === recipeId);
+        const recReqs = rec && rec.allergens ? rec.allergens.split(',') : [];
+        
+        let hasConflict = false;
+        reqs.forEach(res => {
+            res = res.trim();
+            if (res === 'Halal') {
+                if (recReqs.includes('Non-Halal')) hasConflict = true;
+            } else if (res === 'Vegan') {
+                if (!recReqs.includes('Vegan') && !recReqs.includes('Vegetarian')) hasConflict = true;
+            } else if (res === 'Vegetarian') {
+                if (!recReqs.includes('Vegetarian') && !recReqs.includes('Vegan')) hasConflict = true;
+            } else {
+                if (recReqs.includes(res)) hasConflict = true;
+            }
+        });
+        return hasConflict;
     }
 
     // CALENDAR LOGIC
@@ -466,8 +481,7 @@ $recipes_json = json_encode($recipes);
             let tagsHtml = '';
             if (recipe.allergens) {
                 recipe.allergens.split(',').forEach(a => {
-                    let label = a === 'Halal' ? 'Non-Halal (Pork)' : a;
-                    tagsHtml += `<span class="tag alert-tag">Contains ${label}</span>`;
+                    tagsHtml += `<span class="tag alert-tag">${a}</span>`;
                 });
             } else {
                 tagsHtml = '<span class="tag">No Major Allergens</span>';
@@ -520,6 +534,7 @@ $recipes_json = json_encode($recipes);
         function studentRow(s, assignedRecipe, fromList, toList, mealLabel, mealColor) {
             const hasConflict = checkStudentConflict(s, assignedRecipe);
             const conflictWarn = hasConflict ? `<span class="warning-tag" title="${s.restriction_names || ''}">⚠ Allergy Conflict</span>` : '';
+            const restrictions = s.restriction_names ? `<div style="font-size:0.65rem; color:var(--text-muted); margin-top:2px;">Tags: <strong>${s.restriction_names}</strong></div>` : '';
             return `
             <div class="student-list-item" style="align-items: center; ${hasConflict ? 'background:#fffbeb;' : ''}">
                 <div>
@@ -527,6 +542,7 @@ $recipes_json = json_encode($recipes);
                     <span style="color:var(--text-muted); font-size:0.7rem; margin-left:0.5rem;">${s.section}</span>
                     ${conflictWarn}
                     ${s.forced ? `<span style="font-size:0.65rem; color:${mealColor}; font-weight:700; margin-left:0.4rem;">(Auto-assigned)</span>` : ''}
+                    ${restrictions}
                 </div>
                 <button onclick="swapStudent('${s.id}', '${fromList}', '${toList}')" title="Move to ${toList === 'a' ? 'Meal A' : 'Meal B'}" style="background:none; border:none; color:var(--text-muted); cursor:pointer;">
                     <span class="material-icons" style="font-size:16px;">swap_horiz</span>
@@ -586,6 +602,7 @@ $recipes_json = json_encode($recipes);
         }
         if (!student) return;
         student.reason = 'Manually Assigned';
+        delete student.forced;
 
         if (to === 'a') distributionData.meal_a_list.push(student);
         else if (to === 'b') distributionData.meal_b_list.push(student);

@@ -672,6 +672,7 @@ require_once '../../includes/bmi_helper.php';
                                             data-fname="<?php echo htmlspecialchars($st['first_name']); ?>"
                                             data-lname="<?php echo htmlspecialchars($st['last_name']); ?>"
                                             data-student_id="<?php echo htmlspecialchars($st['student_id']); ?>"
+                                            data-height="<?php echo $st['current_height'] ?? ''; ?>"
                                             data-sex="<?php echo $st['sex']; ?>" data-birth="<?php echo $st['birth_date']; ?>"
                                             data-grade="<?php echo htmlspecialchars($st['grade_level']); ?>"
                                             data-section="<?php echo htmlspecialchars($st['section']); ?>"
@@ -1069,8 +1070,11 @@ require_once '../../includes/bmi_helper.php';
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Min
-                        Target Weight (kg)</label>
+                    <label style="display:flex; justify-content:space-between; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">
+                        Min Target Weight (kg)
+                        <a href="#" onclick="suggestTargetWeightEdit(); return false;"
+                            style="color: var(--primary); font-size: 0.75rem; font-weight: 700;">SUGGEST</a>
+                    </label>
                     <input type="number" step="0.1" name="min_target_weight" id="edit_min_target"
                         style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                 </div>
@@ -1293,6 +1297,18 @@ require_once '../../includes/bmi_helper.php';
         const max = 24.9 * Math.pow(h / 100, 2);
         document.getElementById('min_target_weight_enroll').value = min.toFixed(1);
         document.getElementById('max_target_weight_enroll').value = max.toFixed(1);
+    }
+
+    function suggestTargetWeightEdit() {
+        const h = currentStudentData ? currentStudentData.height : null;
+        if (!h || h <= 0) {
+            alert("No height record found for this student. Please add a Nutritional Assessment first to calculate target weights.");
+            return;
+        }
+        const min = 18.5 * Math.pow(h / 100, 2);
+        const max = 24.9 * Math.pow(h / 100, 2);
+        document.getElementById('edit_min_target').value = min.toFixed(1);
+        document.getElementById('edit_max_target').value = max.toFixed(1);
     }
 
     // Background DOM refresh strategy for SPA-like feel
@@ -1553,6 +1569,7 @@ require_once '../../includes/bmi_helper.php';
                 birth: progBtn.getAttribute('data-birth'),
                 grade: progBtn.getAttribute('data-grade'),
                 section: progBtn.getAttribute('data-section'),
+                height: progBtn.getAttribute('data-height'),
                 allergens: progBtn.getAttribute('data-allergens') ? progBtn.getAttribute('data-allergens').split(',') : []
             };
 
