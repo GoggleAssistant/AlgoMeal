@@ -1,13 +1,9 @@
 <?php
-require_once 'db.php';
-$res = $conn->query("SELECT * FROM dietary_restrictions");
-while($row = $res->fetch_assoc()) {
-    print_r($row);
+require 'c:\xampp\htdocs\AlgoMeal\db.php';
+$res_recipes = $conn->query("SELECT r.*, GROUP_CONCAT(DISTINCT dr.restriction_name) as allergens, GROUP_CONCAT(DISTINCT rat.restriction_id) as restriction_ids FROM recipes r LEFT JOIN recipe_allergen_tags rat ON r.recipe_id = rat.recipe_id LEFT JOIN dietary_restrictions dr ON rat.restriction_id = dr.restriction_id GROUP BY r.recipe_id ORDER BY r.recipe_name");
+$recipes = [];
+while ($row = $res_recipes->fetch_assoc()) {
+    $recipes[] = $row;
 }
-
-$res = $conn->query("SELECT r.recipe_name, r.recipe_id, d.restriction_name FROM recipes r LEFT JOIN recipe_allergen_tags t ON r.recipe_id = t.recipe_id LEFT JOIN dietary_restrictions d ON t.restriction_id = d.restriction_id");
-echo "RECIPES:\n";
-while($row = $res->fetch_assoc()) {
-    print_r($row);
-}
+print_r($recipes);
 ?>

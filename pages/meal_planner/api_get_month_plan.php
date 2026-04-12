@@ -1,41 +1,24 @@
 <?php
 require_once '../../db.php';
-
 header('Content-Type: application/json');
 
-$month = $_GET['month'] ?? ''; // Format: YYYY-MM
+$month = $_GET['month'] ?? date('Y-m'); // YYYY-MM
+$res = $conn->query("
+    SELECT dp.scheduled_date, dp.is_served,
+           rA.hex_color as a_color, rB.hex_color as b_color
+    FROM daily_meal_plans dp
+    LEFT JOIN recipes rA ON dp.meal_a_recipe_id = rA.recipe_id
+    LEFT JOIN recipes rB ON dp.meal_b_recipe_id = rB.recipe_id
+    WHERE dp.scheduled_date LIKE '$month-%'
+");
 
-if (empty($month)) {
-    echo json_encode(['success' => false, 'message' => 'Missing month parameter']);
-    exit;
-}
-
-// Get all unique dates in the meal_plan table that fall within this month
-$sql = "
-    SELECT d.scheduled_date, 
-           COUNT(m.student_id) as count,
-           d.is_served,
-           CONCAT(d.meal_a_recipe_id, ',', d.meal_b_recipe_id) as assigned_recipes
-    FROM daily_meal_plans d
-    LEFT JOIN meal_plan m ON d.scheduled_date = m.scheduled_date
-    WHERE d.scheduled_date LIKE '$month-%'
-    GROUP BY d.scheduled_date
-
-";
-$result = $conn->query($sql);
-$dates = [];
-
-while ($row = $result->fetch_assoc()) {
-    $dates[$row['scheduled_date']] = [
-        'status' => $row['is_served'] ? 'served' : 'deployed',
-        'count' => $row['count'],
-        'assigned_recipes' => $row['assigned_recipes']
+$data = [];
+while ($row = $res->fetch_assoc()) {
+    $data[$row['scheduled_date']] = [
+        'a_color' => $row['a_color'] ?: '#3b82f6',
+        'b_color' => $row['b_color'] ?: null, // null if no Meal B assigned
+        'is_served' => $row['is_served'] == 1
     ];
-
 }
-
-echo json_encode([
-    'success' => true,
-    'data' => $dates
-]);
+echo json_encode(['success' => true, 'data' => $data]);
 ?>

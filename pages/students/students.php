@@ -138,20 +138,30 @@ require_once '../../includes/bmi_helper.php';
         gap: 0.75rem;
     }
 
-    .btn-outline {
-        border: 1px solid var(--border);
-        background: var(--surface);
-        color: var(--text-main);
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        font-weight: 500;
-        font-size: 0.875rem;
-        cursor: pointer;
+    .btn-m3 {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 100px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border: none;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
         text-decoration: none;
     }
+    .btn-m3:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .btn-m3:active { transform: scale(0.98); }
+    .btn-m3-primary { background: var(--primary); color: white; }
+    .btn-m3-outline { background: white; color: var(--text-main); border: 1px solid var(--border); box-shadow: none; }
+    .btn-m3-outline:hover { background: #f8fafc; border-color: var(--primary); color: var(--primary); }
+    .btn-m3-tonal { background: #e0e7ff; color: #3730a3; box-shadow: none; }
+    .btn-m3-tonal:hover { background: #d1d5db; }
+    .btn-m3-danger { background: #fee2e2; color: #b91c1c; box-shadow: none; }
+    .btn-m3-danger:hover { background: #fecaca; }
 
     /* Section Tabs */
     .filter-label {
@@ -460,12 +470,15 @@ require_once '../../includes/bmi_helper.php';
             <p>Manage and monitor student nutritional progress per section.</p>
         </div>
         <div class="header-actions">
-            <a href="export_students.php?section=<?php echo urlencode($active_section); ?>" class="btn-outline"><span
+            <a href="export_students.php?section=<?php echo urlencode($active_section); ?>" class="btn-m3 btn-m3-outline"><span
                     class="material-icons" style="font-size: 16px;">file_download</span> Export List</a>
             <?php if ($role === 'Admin'): ?>
-            <button class="btn" style="display: flex; align-items: center; gap: 0.5rem;"
-                onclick="document.getElementById('addStudentModal').classList.add('active')"><span
-                    class="material-icons" style="font-size: 16px;">add</span> Add New Student</button>
+                <button class="btn-m3 btn-m3-tonal" onclick="document.getElementById('importStudentModal').classList.add('active')">
+                    <span class="material-icons" style="font-size: 16px;">upload_file</span> Import CSV
+                </button>
+                <button class="btn-m3 btn-m3-primary" onclick="document.getElementById('addStudentModal').classList.add('active')">
+                    <span class="material-icons" style="font-size: 16px;">add</span> Add Student
+                </button>
             <?php endif; ?>
         </div>
 
@@ -544,7 +557,6 @@ require_once '../../includes/bmi_helper.php';
             </div>
             <div class="data-filters" style="display: flex; gap: 0.5rem; align-items: center; width: 65%;">
                 <input type="text" id="searchInput" placeholder="Search students, ID Number..."
-
                     style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; flex-grow: 1;">
 
                 <select id="bmiFilter" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
@@ -632,7 +644,8 @@ require_once '../../includes/bmi_helper.php';
                                             <?php echo strtoupper(substr($st['first_name'], 0, 1)); ?>
                                         </div>
                                         <div class="student-info">
-                                            <div class="student-name-link" style="text-decoration: none; color: inherit; font-weight: 700;">
+                                            <div class="student-name-link"
+                                                style="text-decoration: none; color: inherit; font-weight: 700;">
                                                 <?php echo htmlspecialchars($st['first_name'] . ' ' . $st['last_name']); ?>
                                             </div>
                                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem;">
@@ -910,29 +923,42 @@ require_once '../../includes/bmi_helper.php';
         <form id="assessmentForm">
             <input type="hidden" id="assessLrn" name="student_id">
             <div style="margin-bottom: 1rem;">
-                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Height (cm)</label>
-                <input type="number" step="0.1" id="assess_height" name="height" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Height
+                    (cm)</label>
+                <input type="number" step="0.1" id="assess_height" name="height" required
+                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
             </div>
             <div style="margin-bottom: 1rem;">
-                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Weight (kg)</label>
-                <input type="number" step="0.1" id="assess_weight" name="weight" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Weight
+                    (kg)</label>
+                <input type="number" step="0.1" id="assess_weight" name="weight" required
+                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
             </div>
             <div style="margin-bottom: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
-                <label style="display:flex; justify-content:space-between; font-size: 0.75rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;">
+                <label
+                    style="display:flex; justify-content:space-between; font-size: 0.75rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;">
                     Target Weight (Optional)
-                    <a href="#" onclick="suggestTargetWeightAssessment(); return false;" style="font-size: 0.65rem;">SUGGEST</a>
+                    <a href="#" onclick="suggestTargetWeightAssessment(); return false;"
+                        style="font-size: 0.65rem;">SUGGEST</a>
                 </label>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <input type="number" step="0.1" name="min_target_weight" id="assess_min_target_weight" placeholder="Min" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
-                    <input type="number" step="0.1" name="max_target_weight" id="assess_max_target_weight" placeholder="Max" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    <input type="number" step="0.1" name="min_target_weight" id="assess_min_target_weight"
+                        placeholder="Min"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    <input type="number" step="0.1" name="max_target_weight" id="assess_max_target_weight"
+                        placeholder="Max"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                 </div>
             </div>
             <div style="margin-bottom: 1.5rem;">
-                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Assessment Date</label>
-                <input type="date" name="assessment_date" value="<?php echo date('Y-m-d'); ?>" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Assessment
+                    Date</label>
+                <input type="date" name="assessment_date" value="<?php echo date('Y-m-d'); ?>" required
+                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn-cancel" onclick="document.getElementById('addAssessmentModal').classList.remove('active')">Cancel</button>
+                <button type="button" class="btn-cancel"
+                    onclick="document.getElementById('addAssessmentModal').classList.remove('active')">Cancel</button>
                 <button type="submit" class="btn" style="background: var(--primary); color: white;">Save Record</button>
             </div>
         </form>
@@ -1070,7 +1096,8 @@ require_once '../../includes/bmi_helper.php';
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
-                    <label style="display:flex; justify-content:space-between; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">
+                    <label
+                        style="display:flex; justify-content:space-between; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">
                         Min Target Weight (kg)
                         <a href="#" onclick="suggestTargetWeightEdit(); return false;"
                             style="color: var(--primary); font-size: 0.75rem; font-weight: 700;">SUGGEST</a>
@@ -1089,17 +1116,43 @@ require_once '../../includes/bmi_helper.php';
             <!-- SBFP Indicators Removed -->
 
 
-            <div class="modal-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem;">
-                <button type="button" class="btn" onclick="deleteStudentAdmin()" 
-                        style="background: none; border: 1px solid #d93025; color: #d93025; padding: 0.5rem 1rem; border-radius: 4px; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: background 0.2s;">
+            <div class="modal-actions"
+                style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem;">
+                <button type="button" class="btn-m3 btn-m3-danger" onclick="deleteStudentAdmin()">
                     <span class="material-icons" style="font-size: 18px;">delete</span>
                     Delete Student
                 </button>
                 <div style="display: flex; gap: 1rem;">
-                    <button type="button" class="btn-cancel"
+                    <button type="button" class="btn-m3 btn-m3-outline"
                         onclick="document.getElementById('editStudentModal').classList.remove('active')">Cancel</button>
-                    <button type="submit" class="btn" style="background: var(--primary); color: white; padding: 0.5rem 1.5rem; border-radius: 4px;">Save Changes</button>
+                    <button type="submit" class="btn-m3 btn-m3-primary">Save Changes</button>
                 </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Import Student Modal -->
+<div class="modal-overlay" id="importStudentModal">
+    <div class="modal" style="max-width: 450px; width: 95%;">
+        <h2 class="modal-title">Bulk Student Import</h2>
+        <div style="background: #f0f7ff; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #cce3ff;">
+            <p style="margin:0; font-size: 0.85rem; color: #004085; line-height: 1.4;">
+                <span class="material-icons" style="font-size: 16px; vertical-align: middle;">info</span> 
+                Download the strategic template first to ensure data alignment. Existing LRNs will be skipped to preserve integrity.
+            </p>
+            <a href="api_download_template.php" class="btn-m3 btn-m3-outline" style="margin-top: 0.75rem; width: 100%; border-color: #0061ff; color: #0061ff;">
+                <span class="material-icons">download</span> Get CSV Template
+            </a>
+        </div>
+        <form id="importForm">
+            <div class="input-group">
+                <label>Select CSV Portfolio</label>
+                <input type="file" name="csvFile" accept=".csv" required style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:8px;">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-m3 btn-m3-outline" onclick="document.getElementById('importStudentModal').classList.remove('active')">Cancel</button>
+                <button type="submit" class="btn-m3 btn-m3-primary">Start Import</button>
             </div>
         </form>
     </div>
@@ -1110,8 +1163,8 @@ require_once '../../includes/bmi_helper.php';
             <span id="chartModalTitle">Student Progress</span>
             <div style="display:flex; gap: 0.5rem;">
                 <?php if ($role === 'Admin'): ?>
-                <button id="mainEditStudentBtn" class="btn-icon" title="Edit Student Profile"
-                    style="color: var(--primary);"><span class="material-icons">edit</span></button>
+                    <button id="mainEditStudentBtn" class="btn-icon" title="Edit Student Profile"
+                        style="color: var(--primary);"><span class="material-icons">edit</span></button>
                 <?php endif; ?>
                 <button class="btn-icon" onclick="closeChartModal()" title="Close"><span
                         class="material-icons">close</span></button>
@@ -1164,9 +1217,9 @@ require_once '../../includes/bmi_helper.php';
             Record Details
             <div style="display:flex; gap: 0.5rem;">
                 <?php if ($role === 'Admin'): ?>
-                <button class="btn-icon" id="viewModalEditBtn" style="color: var(--primary);" title="Edit Record">
-                    <span class="material-icons">edit</span>
-                </button>
+                    <button class="btn-icon" id="viewModalEditBtn" style="color: var(--primary);" title="Edit Record">
+                        <span class="material-icons">edit</span>
+                    </button>
                 <?php endif; ?>
 
                 <button class="btn-icon"
@@ -1232,7 +1285,8 @@ require_once '../../includes/bmi_helper.php';
 
             if (matchSearch && matchBmi) {
                 row.style.display = '';
-                visibleCount++;      } else {
+                visibleCount++;
+            } else {
                 row.style.display = 'none';
             }
         });
@@ -1341,7 +1395,7 @@ require_once '../../includes/bmi_helper.php';
         // Build History Table
         const tbody = document.querySelector('#historyTable tbody');
         tbody.innerHTML = '';
-        
+
         // Always Latest -> Oldest for the table
         const listItems = [...history].reverse();
 
@@ -1419,7 +1473,7 @@ require_once '../../includes/bmi_helper.php';
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { 
+                    legend: {
                         display: true,
                         position: 'top',
                         labels: {
@@ -1430,7 +1484,7 @@ require_once '../../includes/bmi_helper.php';
                     },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 let label = context.dataset.label || '';
                                 if (label === 'Actual BMI') {
                                     const h = context.dataset.heights[context.dataIndex];
@@ -1636,46 +1690,48 @@ require_once '../../includes/bmi_helper.php';
 
     // Edit Student Button (Inside Progress Modal) - Admin only
     const mainEditStudentBtn = document.getElementById('mainEditStudentBtn');
-    if (mainEditStudentBtn) { mainEditStudentBtn.addEventListener('click', function () {
-        if (!currentStudentData) return;
+    if (mainEditStudentBtn) {
+        mainEditStudentBtn.addEventListener('click', function () {
+            if (!currentStudentData) return;
 
-        // Fill Edit Modal
-        document.getElementById('edit_original_lrn').value = currentStudentData.id;
-        document.getElementById('edit_student_id').value = currentStudentData.id;
-        document.getElementById('edit_first_name').value = currentStudentData.fname;
-        document.getElementById('edit_last_name').value = currentStudentData.lname;
-        document.getElementById('edit_birth_date').value = currentStudentData.birth;
-        document.getElementById('edit_sex').value = currentStudentData.sex;
-        document.getElementById('edit_grade_level').value = currentStudentData.grade;
+            // Fill Edit Modal
+            document.getElementById('edit_original_lrn').value = currentStudentData.id;
+            document.getElementById('edit_student_id').value = currentStudentData.id;
+            document.getElementById('edit_first_name').value = currentStudentData.fname;
+            document.getElementById('edit_last_name').value = currentStudentData.lname;
+            document.getElementById('edit_birth_date').value = currentStudentData.birth;
+            document.getElementById('edit_sex').value = currentStudentData.sex;
+            document.getElementById('edit_grade_level').value = currentStudentData.grade;
 
-        // Handle Section Select vs Manual
-        const sectSelect = document.getElementById('edit_section_select');
-        const sectManual = document.getElementById('editManualSectionInput');
-        let found = false;
-        for (let i = 0; i < sectSelect.options.length; i++) {
-            if (sectSelect.options[i].value === currentStudentData.section) {
-                sectSelect.value = currentStudentData.section;
-                found = true;
-                break;
+            // Handle Section Select vs Manual
+            const sectSelect = document.getElementById('edit_section_select');
+            const sectManual = document.getElementById('editManualSectionInput');
+            let found = false;
+            for (let i = 0; i < sectSelect.options.length; i++) {
+                if (sectSelect.options[i].value === currentStudentData.section) {
+                    sectSelect.value = currentStudentData.section;
+                    found = true;
+                    break;
+                }
             }
-        }
-        if (!found) {
-            sectSelect.value = "Other";
-            sectManual.value = currentStudentData.section;
-            sectManual.style.display = "block";
-        } else {
-            sectManual.value = "";
-            sectManual.style.display = "none";
-        }
+            if (!found) {
+                sectSelect.value = "Other";
+                sectManual.value = currentStudentData.section;
+                sectManual.style.display = "block";
+            } else {
+                sectManual.value = "";
+                sectManual.style.display = "none";
+            }
 
-        // Handle Allergies
-        document.querySelectorAll('.edit-allergy-cb').forEach(cb => {
-            cb.checked = currentStudentData.allergens.includes(cb.value);
+            // Handle Allergies
+            document.querySelectorAll('.edit-allergy-cb').forEach(cb => {
+                cb.checked = currentStudentData.allergens.includes(cb.value);
+            });
+
+            closeChartModal();
+            document.getElementById('editStudentModal').classList.add('active');
         });
-
-        closeChartModal();
-        document.getElementById('editStudentModal').classList.add('active');
-    }); } // end if (mainEditStudentBtn)
+    } // end if (mainEditStudentBtn)
 
     // AJAX Edit Student
     document.getElementById('editStudentForm').addEventListener('submit', function (e) {
@@ -1726,9 +1782,9 @@ require_once '../../includes/bmi_helper.php';
             });
     }
 
-    window.deleteStudentAdmin = function() {
+    window.deleteStudentAdmin = function () {
         if (!currentStudentData || !currentStudentData.id) return;
-        
+
         const fullName = `${currentStudentData.fname} ${currentStudentData.lname}`;
         if (!confirm(`CAUTION: Are you sure you want to PERMANENTLY delete ${fullName}?\n\nThis will also remove all their nutritional history and meal plans. This action cannot be undone.`)) return;
 
@@ -1739,16 +1795,44 @@ require_once '../../includes/bmi_helper.php';
             method: 'POST',
             body: fd
         })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                alert('Student deleted successfully.');
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Student deleted successfully.');
+                    location.reload();
+                } else {
+                    alert('Error deleting student: ' + data.error);
+                }
+            });
+    }
+
+    // Import Student Action
+    document.getElementById('importForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.innerText = 'Processing...';
+
+        try {
+            const res = await fetch('api_import_students.php', {
+                method: 'POST',
+                body: new FormData(this)
+            });
+            const data = await res.json();
+            if(data.success) {
+                alert(data.message);
                 location.reload();
             } else {
-                alert('Error deleting student: ' + data.error);
+                alert('Import Failed: ' + data.error);
             }
-        });
-    }
+        } catch(e) {
+            alert('A system error occurred during extraction.');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Start Import';
+        }
+    });
+
 </script>
 
 <?php require_once '../../includes/footer.php'; ?>

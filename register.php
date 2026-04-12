@@ -7,16 +7,14 @@ $success = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $faculty_name = trim($_POST['faculty_name']);
-    $role = $_POST['role'] ?? '';
+    $role = 'Admin'; // Roles removed, default to Admin
     $password = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
 
-    if (empty($faculty_name) || empty($password) || empty($role) || empty($confirm_password)) {
+    if (empty($faculty_name) || empty($password) || empty($confirm_password)) {
         $error = "All fields are required.";
     } elseif ($password !== $confirm_password) {
         $error = "Passwords do not match.";
-    } elseif (!in_array($role, ['Admin', 'Faculty'])) {
-        $error = "Invalid role selected.";
     } else {
         // Check if user already exists
         $stmt = $conn->prepare("SELECT user_id FROM users WHERE faculty_name = ?");
@@ -264,7 +262,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <div class="brand">
                 <img src="assets/Algomeal.svg" alt="AlgoMeal Logo" class="brand-logo" style="background: transparent; box-shadow: none; border-radius: 0;">
                 <h1>Create Account</h1>
-                <p>Register as Faculty or Administrator</p>
+                <p>Register an Administrative Account</p>
             </div>
 
             <?php if (!empty($error)): ?>
@@ -298,15 +296,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         value="<?php echo isset($_POST['faculty_name']) ? htmlspecialchars($_POST['faculty_name']) : ''; ?>">
                 </div>
 
-                <div class="form-group">
-                    <label for="role">Role Designation</label>
-                    <select id="role" name="role" class="form-control" required>
-                        <option value="" disabled <?php echo (!isset($_POST['role'])) ? 'selected' : ''; ?>>Select a
-                            role</option>
-                        <option value="Faculty" <?php echo (isset($_POST['role']) && $_POST['role'] == 'Faculty') ? 'selected' : ''; ?>>Faculty / Teacher</option>
-                        <option value="Admin" <?php echo (isset($_POST['role']) && $_POST['role'] == 'Admin') ? 'selected' : ''; ?>>Administrator</option>
-                    </select>
-                </div>
+
 
                 <div class="form-group">
                     <label for="password">Password</label>

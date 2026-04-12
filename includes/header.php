@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $username = $_SESSION['faculty_name'] ?? 'User';
-$role = $_SESSION['role'] ?? 'Faculty';
+$role = 'Admin'; // Roles removed as per request
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -28,6 +28,8 @@ $role = $_SESSION['role'] ?? 'Faculty';
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="<?php echo $path_prefix; ?>assets/css/modals_lite.css?v=1.1">
+    <script src="<?php echo $path_prefix; ?>assets/js/modals_lite.js?v=1.1"></script>
     <style>
         :root {
             --bg-color: #f0f2f5;
