@@ -9,7 +9,6 @@ if (($_SESSION['role'] ?? '') !== 'Admin') {
     exit;
 }
 
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lrn = trim($_POST['student_id'] ?? '');
     $last_name = trim($_POST['last_name'] ?? '');
@@ -19,8 +18,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $grade_level = $_POST['grade_level'] ?? '';
     $section = $_POST['section'] ?? '';
     $manual_section = trim($_POST['manual_section'] ?? '');
-    $min_target_weight = $_POST['min_target_weight'] ?? 0;
-    $max_target_weight = $_POST['max_target_weight'] ?? 0;
+    
+    // NEW FIELDS
+    $parent_milk_consent = (int)($_POST['parent_milk_consent'] ?? 0);
+    $participation_consent = (int)($_POST['participation_consent'] ?? 0);
+    $is_4ps = (int)($_POST['is_4ps'] ?? 0);
+    $is_dewormed = (int)($_POST['is_dewormed'] ?? 0);
+
+    // TARGET WEIGHTS - Auto-calculated from initial height if available
+    $init_height = (float)($_POST['init_height'] ?? 0);
+    $min_target_weight = (float)($_POST['min_target_weight'] ?? 0);
+    $max_target_weight = (float)($_POST['max_target_weight'] ?? 0);
+
+    if ($init_height > 0) {
+        $min_target_weight = 18.5 * pow($init_height / 100, 2);
+        $max_target_weight = 24.9 * pow($init_height / 100, 2);
+    }
 
     // Use manual section if provided
     if (trim($section) === 'Other' && !empty($manual_section)) {
@@ -35,11 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn->begin_transaction();
 
     try {
-        $stmt = $conn->prepare("INSERT INTO student (student_id, last_name, first_name, sex, birth_date, grade_level, section, min_target_weight, max_target_weight) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO student (student_id, last_name, first_name, sex, birth_date, grade_level, section, min_target_weight, max_target_weight, parent_milk_consent, participation_consent, deworming_status, is_4ps_beneficiary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         if(!$stmt) throw new Exception("Statement prep failed: " . $conn->error);
 
-        // Corrected bind_param: s (id), s (last), s (first), s (sex), s (birth), s (grade), s (section), d (min), d (max)
-        $stmt->bind_param("sssssssdd", $lrn, $last_name, $first_name, $sex, $birth_date, $grade_level, $section, $min_target_weight, $max_target_weight);
+        $stmt->bind_param("sssssssddiiii", $lrn, $last_name, $first_name, $sex, $birth_date, $grade_level, $section, $min_target_weight, $max_target_weight, $parent_milk_consent, $participation_consent, $is_dewormed, $is_4ps);
         
         if(!$stmt->execute()) throw new Exception("Failed to add student. ID may already exist.");
 
@@ -54,23 +66,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Check for initial assessment (optional)
+        // Handle initial assessment
         $init_height = $_POST['init_height'] ?? '';
         $init_weight = $_POST['init_weight'] ?? '';
+        $assess_date = $_POST['assessment_date'] ?? date('Y-m-d');
+        $ns_status = $_POST['ns_status'] ?? 'Normal';
+        $hfa_status = $_POST['hfa_status'] ?? 'Normal';
+        $age_y = (int)($_POST['age_years'] ?? 0);
+        $age_m = (int)($_POST['age_months'] ?? 0);
 
         if (!empty($init_height) && !empty($init_weight)) {
             $created_by = $_SESSION['user_id'] ?? 1;
             $height_m = $init_height / 100;
             $bmi = $init_weight / ($height_m * $height_m);
             
-            $status = 'Normal';
-            if($bmi < 13.5) $status = 'Severely Wasted';
-            else if($bmi < 14.5) $status = 'Wasted';
-            else if($bmi > 18.5) $status = 'Overweight';
-
-            $hist_stmt = $conn->prepare("INSERT INTO nutritional_record (student_id, created_by, height, weight, bmi, nutritional_status, assessment_date) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $today = date('Y-m-d');
-            $hist_stmt->bind_param("sidddss", $lrn, $created_by, $init_height, $init_weight, $bmi, $status, $today);
+            $hist_stmt = $conn->prepare("INSERT INTO nutritional_record (student_id, created_by, height, weight, bmi, nutritional_status, hfa_status, age_years, age_months, assessment_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $hist_stmt->bind_param("sidddssiis", $lrn, $created_by, $init_height, $init_weight, $bmi, $ns_status, $hfa_status, $age_y, $age_m, $assess_date);
             if(!$hist_stmt->execute()) throw new Exception("Failed to save initial assessment.");
         }
 

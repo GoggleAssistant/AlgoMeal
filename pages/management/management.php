@@ -17,7 +17,7 @@ $allocated_budget = (float)($settings['total_allocated_budget'] ?? 500000.00);
 $daily_limit = (float)($settings['total_daily_budget'] ?? 0);
 
 // Financial Sums
-$meal_spent = (float)($conn->query("SELECT SUM(actual_cost) as total FROM meal_plan")->fetch_assoc()['total'] ?? 0);
+$meal_spent = (float)($conn->query("SELECT SUM(mp.actual_cost) as total FROM meal_plan mp JOIN daily_meal_plans dmp ON mp.scheduled_date = dmp.scheduled_date WHERE dmp.is_served = 1")->fetch_assoc()['total'] ?? 0);
 $logs_spent = (float)($conn->query("SELECT SUM(amount) as total FROM budget_logs")->fetch_assoc()['total'] ?? 0);
 $total_spent = $meal_spent + $logs_spent;
 $remaining_funds = $allocated_budget - $total_spent;
@@ -126,6 +126,27 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
             window.print();
             setTimeout(() => { document.body.classList.remove('print-roster-only'); }, 500);
         }
+
+        async function saveBudgetSettings() {
+            const alloc = document.getElementById('setAllocBudget').value;
+            const daily = document.getElementById('setDailyBudget').value;
+            if (!alloc || !daily) return alert('Please fill in both budget fields.');
+            try {
+                const res = await fetch('api_save_settings.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ total_allocated_budget: alloc, total_daily_budget: daily })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    // Flash the button green briefly
+                    const btn = document.querySelector('[onclick="saveBudgetSettings()"]');
+                    btn.style.background = '#10b981';
+                    btn.textContent = '✓ Saved!';
+                    setTimeout(() => { btn.style.background = ''; btn.innerHTML = '<span class="material-icons" style="font-size:16px; vertical-align:middle;">save</span> Save Parameters'; location.reload(); }, 1200);
+                } else { alert('Error: ' + d.message); }
+            } catch(e) { alert('Network error saving settings.'); }
+        }
     </script>
 
     <div class="content">
@@ -140,13 +161,12 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
         </div>
 
         <div class="mgmt-tabs no-print">
-            <button class="tab-btn <?= !isset($_GET['page_offset']) ? 'active' : '' ?>" data-tab="fiscal" onclick="switchTab('fiscal')">FISCAL CONTROL</button>
-            <button class="tab-btn" data-tab="docs" onclick="switchTab('docs')">OPERATIONAL DOCS</button>
-            <button class="tab-btn <?= isset($_GET['page_offset']) ? 'active' : '' ?>" data-tab="attendance" data-manual="true" onclick="switchTab('attendance')">ATTENDANCE GRID</button>
-        </div>
-
-        <!-- TAB: FISCAL -->
-        <div id="tab-fiscal" class="tab-content <?= !isset($_GET['page_offset']) ? 'active' : '' ?>">
+            <button class="tab-btn <?= (!isset($_GET['tab']) || $_GET['tab'] == 'fiscal') && !isset($_GET['page_offset']) ? 'active' : '' ?>" data-tab="fiscal" onclick="switchTab('fiscal')">FISCAL CONTROL</button>
+            <button class="tab-btn <?= (isset($_GET['tab']) && $_GET['tab'] == 'docs') ? 'active' : '' ?>" data-tab="docs" onclick="switchTab('docs')">OPERATIONAL DOCS</button>
+            <button class="tab-btn <?= (isset($_GET['tab']) && $_GET['tab'] == 'sbfp1') ? 'active' : '' ?>" data-tab="sbfp1" onclick="switchTab('sbfp1')">SBFP FORM 1</button>
+            <button class="tab-btn <?= (isset($_GET['page_offset']) || (isset($_GET['tab']) && $_GET['tab'] == 'attendance')) ? 'active' : '' ?>" data-tab="attendance" data-manual="true" onclick="switchTab('attendance')">ATTENDANCE GRID</button>
+        </div>        <!-- TAB: FISCAL -->
+        <div id="tab-fiscal" class="tab-content <?= (!isset($_GET['tab']) || $_GET['tab'] == 'fiscal') && !isset($_GET['page_offset']) ? 'active' : '' ?>">
             <div class="kpi-row no-print">
                 <div class="kpi-card"><div class="kpi-label">Strategic Allocation</div><div class="kpi-value">&#8369;<?=number_format($allocated_budget,2)?></div></div>
                 <div class="kpi-card"><div class="kpi-label">Cumulative Spend</div><div class="kpi-value" style="color:var(--primary);">&#8369;<?=number_format($total_spent,2)?></div></div>
@@ -191,10 +211,10 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
                     </table>
                 </div>
             </div>
-        </div>
+        </div> <!-- END TAB: FISCAL -->
 
         <!-- TAB: DOCS -->
-        <div id="tab-docs" class="tab-content">
+        <div id="tab-docs" class="tab-content <?= (isset($_GET['tab']) && $_GET['tab'] == 'docs') ? 'active' : '' ?>">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;" class="no-print">
                 <h3 style="margin:0;">Kitchen Photo Evidence</h3>
                 <button class="btn-m3 btn-m3-primary" onclick="openUploadModal()"><span class="material-icons">add_a_photo</span> Add Evidence</button>
@@ -214,9 +234,127 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
                     <div style="grid-column: 1/-1; text-align:center; padding:5rem; color:var(--text-muted);">No operational evidence uploaded yet.</div>
                 <?php endif; ?>
             </div>
-        </div>
+        </div> <!-- END TAB: DOCS -->
+
+        <!-- TAB: SBFP FORM 1 -->
+        <div id="tab-sbfp1" class="tab-content <?= (isset($_GET['tab']) && $_GET['tab'] == 'sbfp1') ? 'active' : '' ?>">
+            <div class="mgmt-header no-print" style="margin-bottom: 2rem;">
+                <div class="mgmt-title">
+                    <h3 style="margin:0; color:var(--primary); font-family: 'Outfit', sans-serif; font-weight: 800; letter-spacing: -0.02em;">SBFP FORM 1: Master List of Beneficiaries</h3>
+                    <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">DepEd Standard Format for Beneficiary Documentation.</p>
+                </div>
+                <div>
+                    <button class="btn-m3 btn-m3-outline" onclick="window.print()"><span class="material-icons">print</span> Print Full Form</button>
+                </div>
+            </div>
+
+            <div class="dashboard-card" style="padding: 0; overflow-x: auto; border: 2px solid #000; border-radius: 0;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: 'Inter', sans-serif; white-space: nowrap; border: 1px solid #000;">
+                    <thead style="background: #f1f5f9; border-bottom: 2px solid #000;">
+                        <tr style="text-align: center; text-transform: uppercase; font-weight: 800;">
+                            <th style="padding: 10px; border: 1px solid #000;">Name</th>
+                            <th style="padding: 10px; border: 1px solid #000;">Sex</th>
+                            <th style="padding: 10px; border: 1px solid #000;">Grade /<br>Section</th>
+                            <th style="padding: 10px; border: 1px solid #000;">Date of Birth<br>(MM/DD/YYYY)</th>
+                            <th style="padding: 10px; border: 1px solid #000;">Date of Weighing /<br>Measuring<br>(MM/DD/YYYY)</th>
+                            <th style="padding: 10px; border: 1px solid #000;">Age in<br>Years / Months</th>
+                            <th style="padding: 10px; border: 1px solid #000;">Weight (kg)</th>
+                            <th style="padding: 10px; border: 1px solid #000;">Height (cm)</th>
+                            <th style="padding: 10px; border: 1px solid #000; background: #e2e8f0;" colspan="2">Nutritional Status (NS)</th>
+                            <th style="padding: 10px; border: 1px solid #000; background: #fff7ed;">BMI for 6 y.o.<br>and above<br>(yes or no)</th>
+                            <th style="padding: 10px; border: 1px solid #000;">Parent's<br>consent for milk?</th>
+                            <th style="padding: 10px; border: 1px solid #000;">Dewormed?</th>
+                            <th style="padding: 10px; border: 1px solid #000;">Consent for<br>Participation</th>
+                            <th style="padding: 10px; border: 1px solid #000;">In 4Ps<br>(yes or no)</th>
+                        </tr>
+                        <tr style="text-align: center; font-size: 9px; text-transform: uppercase;">
+                            <th colspan="8" style="background:transparent; border:none;"></th>
+                            <th style="padding: 5px; border: 1px solid #000;">BMI-A</th>
+                            <th style="padding: 5px; border: 1px solid #000;">HFA</th>
+                            <th colspan="5"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                        $sql_f1 = "
+                            SELECT s.*, 
+                                nr.weight as w, 
+                                nr.height as h, 
+                                nr.nutritional_status as ns_bmi, 
+                                nr.hfa_status as ns_hfa, 
+                                nr.age_years as y, 
+                                nr.age_months as am, 
+                                nr.assessment_date as ad
+                            FROM student s
+                            LEFT JOIN nutritional_record nr ON nr.record_id = (
+                                SELECT MAX(record_id) FROM nutritional_record WHERE student_id = s.student_id
+                            )
+                            ORDER BY s.last_name, s.first_name
+                        ";
+                        $res_f1 = $conn->query($sql_f1);
+                        
+                        if ($res_f1 && $res_f1->num_rows > 0):
+                            while($r = $res_f1->fetch_assoc()):
+                                $isSix = ($r['ad'] && $r['y'] >= 6) ? 'Yes' : ($r['ad'] ? 'No' : '--');
+                        ?>
+                        <tr style="border-bottom: 1px solid #000;">
+                            <td style="padding: 8px; border-right: 1px solid #000; font-weight: 700; color: #000;"><?= htmlspecialchars($r['last_name'] . ', ' . $r['first_name']) ?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center;"><?=$r['sex'] == 'Female' ? 'F' : 'M'?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center;"><?= $r['grade_level'] ?> / <?= $r['section'] ?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center;"><?= date('m/d/Y', strtotime($r['birth_date'])) ?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center;"><?= $r['ad'] ? date('m/d/Y', strtotime($r['ad'])) : '--' ?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center; font-weight: 600;"><?= $r['ad'] ? ($r['y']." Y / ".$r['am']." M") : '--' ?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center;"><?= $r['w'] ?: '--' ?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center;"><?= $r['h'] ?: '--' ?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center; font-weight: 700; color: var(--primary);"><?= $r['ns_bmi'] ?: '--' ?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center;"><?= $r['ns_hfa'] ?: '--' ?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center; font-weight: 800; background: #fff7ed;"><?= $isSix ?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center; font-weight: 700; color: <?= $r['parent_milk_consent'] ? '#15803d' : '#be123c' ?>;"><?= $r['parent_milk_consent'] ? 'Yes' : 'No' ?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center; font-weight: 700;"><?= $r['deworming_status'] ? 'Yes' : 'No' ?></td>
+                            <td style="padding: 8px; border-right: 1px solid #000; text-align: center; font-weight: 700;"><?= $r['participation_consent'] ? 'Yes' : 'No' ?></td>
+                            <td style="padding: 8px; text-align: center; font-weight: 700; color: <?= $r['is_4ps_beneficiary'] ? '#15803d' : '#000' ?>;"><?= $r['is_4ps_beneficiary'] ? 'Yes' : 'No' ?></td>
+                        </tr>
+                        <?php endwhile; else: ?>
+                        <tr><td colspan="15" style="padding: 4rem; text-align: center; color: #94a3b8; font-weight: 700;">No student records identified. Please register students in the roster.</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="print-footer no-screen" style="margin-top: 6rem; display: none;">
+                <div style="display: flex; justify-content: space-between; padding: 0 4rem;">
+                    <div style="text-align: center; width: 300px;">
+                        <div style="border-bottom: 2px solid #000; margin-bottom: 10px; padding-top: 60px;"></div>
+                        <div style="font-size: 11px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase;">SBFP Coordinator / Teacher</div>
+                        <div style="font-size: 10px; color: #64748b;">Date Prepared</div>
+                    </div>
+                    <div style="text-align: center; width: 300px;">
+                        <div style="border-bottom: 2px solid #000; margin-bottom: 10px; padding-top: 60px;"></div>
+                        <div style="font-size: 11px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase;">School Head / Principal</div>
+                        <div style="font-size: 10px; color: #64748b;">Date Approved</div>
+                    </div>
+                </div>
+            </div>
+
+            <style>
+                @media screen { .no-screen { display: none !important; } }
+                @media print {
+                    .tab-content { display: none !important; }
+                    #tab-sbfp1 { display: block !important; position: absolute; left: 0; top: 0; width: 100%; border: none; }
+                    .tab-btn, .kpi-row, .mgmt-tabs, .sidebar, .topbar, .no-print, .mgmt-header { display: none !important; }
+                    .dashboard-card { border: none !important; box-shadow: none !important; padding: 0 !important; }
+                    .no-screen { display: block !important; }
+                    body { background: white !important; font-family: 'Inter', sans-serif !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .content { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+                    table { border: 2px solid #000 !important; width: 100% !important; }
+                    th, td { border: 1px solid #000 !important; padding: 8px !important; color: #000 !important; }
+                    thead { background: #f1f5f9 !important; }
+                }
+            </style>
+        </div> <!-- END TAB: SBFP FORM 1 -->
+
         <!-- TAB: ATTENDANCE -->
-        <div id="tab-attendance" class="tab-content <?= isset($_GET['page_offset']) || isset($_GET['attendance']) ? 'active' : '' ?>">
+        <div id="tab-attendance" class="tab-content <?= (isset($_GET['tab']) && $_GET['tab'] == 'attendance') || isset($_GET['page_offset']) ? 'active' : '' ?>">
             <?php 
                 // Fetch ALL dates that were ACTUALLY VERIFIED AND SERVED chronologically
                 $days = []; $dishes = [];
@@ -228,22 +366,21 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
                     WHERE dp.is_served = 1 
                     ORDER BY dp.scheduled_date ASC
                 ");
-                while($r = $res_served->fetch_assoc()){
-                    $days[] = $r['scheduled_date'];
-                    $dish_name = $r['meal_a'] ?: 'Unknown Dish';
-                    if (!empty($r['meal_b'])) $dish_name .= ' & ' . $r['meal_b'];
-                    $dishes[$r['scheduled_date']] = $dish_name;
+                while($rd = $res_served->fetch_assoc()){
+                    $days[] = $rd['scheduled_date'];
+                    $dish_name = $rd['meal_a'] ?: 'Unknown Dish';
+                    if (!empty($rd['meal_b'])) $dish_name .= ' & ' . $rd['meal_b'];
+                    $dishes[$rd['scheduled_date']] = $dish_name;
                 }
 
                 $meal_data = [];
                 if (!empty($days)) {
                     $d_in = implode("','", $days);
                     $res_meals = $conn->query("SELECT student_id, scheduled_date, feeding_status FROM meal_plan WHERE scheduled_date IN ('$d_in')");
-                    while($r = $res_meals->fetch_assoc()) $meal_data[$r['student_id']][$r['scheduled_date']] = $r['feeding_status'];
+                    while($rm = $res_meals->fetch_assoc()) $meal_data[$rm['student_id']][$rm['scheduled_date']] = $rm['feeding_status'];
                 }
 
-                // Fetch ALL students straight down
-                $res_stud = $conn->query("SELECT student_id, CONCAT(first_name, ' ', last_name) as full_name FROM student ORDER BY full_name");
+                $res_stud_att = $conn->query("SELECT student_id, CONCAT(first_name, ' ', last_name) as full_name FROM student ORDER BY full_name");
             ?>
             <div class="no-print" style="margin-bottom:1.5rem;">
                 <h3 style="margin:0 0 0.25rem 0;">Attendance Record</h3>
@@ -268,11 +405,11 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
                         </tr>
                     </thead>
                     <tbody>
-                        <?php while($s = $res_stud->fetch_assoc()): ?>
+                        <?php while($s = $res_stud_att->fetch_assoc()): ?>
                         <tr>
                             <td class="name" style="border-left:none; position:sticky; left:0; background:#ffffff; z-index:1; border-right:2px solid var(--border);"><?= htmlspecialchars($s['full_name']) ?></td>
                             <?php foreach($days as $d): 
-                                $char = '';
+                                $char = '--';
                                 $status = $meal_data[$s['student_id']][$d] ?? '';
                                 if ($status === 'Served') {
                                     $char = '<div style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#ecfdf5; color:#10b981; box-shadow:var(--shadow-sm);"><span class="material-icons" style="font-size:16px; font-weight:bold;">check</span></div>';
@@ -290,8 +427,8 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
             <?php if(empty($days)): ?>
             <div style="text-align:center; padding:3rem; border:1px dashed var(--border); border-radius:12px; color:var(--text-muted); font-weight:700;">No meals have been verified and served yet.</div>
             <?php endif; ?>
-        </div>
-    </div>
+        </div> <!-- END TAB: ATTENDANCE -->
+    </div> <!-- END .content --></div>
 
 
 

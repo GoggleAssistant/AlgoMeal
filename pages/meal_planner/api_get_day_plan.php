@@ -23,10 +23,11 @@ if ($res->num_rows === 0) {
 $plan = $res->fetch_assoc();
 $meal_a = $plan['meal_a_recipe_id'];
 $meal_b = $plan['meal_b_recipe_id'];
+$snack  = $plan['snack_recipe_id'];
 
 // Get Students List
 $q_students = "
-    SELECT m.student_id as id, m.feeding_status, m.recipe_id, s.first_name, s.last_name, s.section,
+    SELECT m.student_id as id, m.feeding_status, m.recipe_id, m.with_milk, m.with_snack, s.first_name, s.last_name, s.section, s.parent_milk_consent,
            (SELECT GROUP_CONCAT(dr.restriction_name) 
             FROM student_allergy_map sam 
             JOIN dietary_restrictions dr ON sam.restriction_id = dr.restriction_id 
@@ -54,7 +55,10 @@ while ($s = $res2->fetch_assoc()) {
         'section'          => $s['section'],
         'restriction_names'=> $s['restriction_names'] ?? '',
         'restriction_ids'  => $s['restriction_ids'] ? array_values(array_filter(explode(',', $s['restriction_ids']))) : [],
-        'feeding_status'   => $s['feeding_status'] ?? 'Served'
+        'feeding_status'   => $s['feeding_status'] ?? 'Served',
+        'milk_consent'     => (int)$s['parent_milk_consent'],
+        'with_milk'        => (int)$s['with_milk'],
+        'with_snack'       => (int)$s['with_snack']
     ];
     if ($s['recipe_id'] === $meal_a) $meal_a_list[] = $student_data;
     else if ($s['recipe_id'] === $meal_b) $meal_b_list[] = $student_data;
@@ -66,6 +70,7 @@ echo json_encode([
     'is_served' => $plan['is_served'] == 1,
     'meal_a' => $meal_a,
     'meal_b' => $meal_b,
+    'snack' => $snack,
     'meal_a_list' => $meal_a_list,
     'meal_b_list' => $meal_b_list
 ]);

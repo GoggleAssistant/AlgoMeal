@@ -9,7 +9,6 @@ if (($_SESSION['role'] ?? '') !== 'Admin') {
     exit;
 }
 
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $original_lrn = $_POST['original_lrn'] ?? '';
     $new_lrn = trim($_POST['student_id'] ?? '');
@@ -20,6 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $grade_level = $_POST['grade_level'] ?? '';
     $section = trim($_POST['section'] ?? '');
     $manual_section = trim($_POST['manual_section'] ?? '');
+    
+    // NEW CONSENT FIELDS
+    $parent_milk_consent = (int)($_POST['parent_milk_consent'] ?? 0);
+    $participation_consent = (int)($_POST['participation_consent'] ?? 0);
+    $is_4ps = (int)($_POST['is_4ps'] ?? 0);
+    $is_dewormed = (int)($_POST['is_dewormed'] ?? 0);
+
     // Use manual section if provided
     if (trim($section) === 'Other' && !empty($manual_section)) {
         $section = $manual_section;
@@ -33,25 +39,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn->begin_transaction();
 
     try {
-        // 1. Update student demographics
         $min_target = $_POST['min_target_weight'] ?? 0;
         $max_target = $_POST['max_target_weight'] ?? 0;
 
-        $stmt = $conn->prepare("UPDATE student SET student_id = ?, last_name = ?, first_name = ?, sex = ?, birth_date = ?, grade_level = ?, section = ?, min_target_weight = ?, max_target_weight = ? WHERE student_id = ?");
+        $stmt = $conn->prepare("UPDATE student SET student_id = ?, last_name = ?, first_name = ?, sex = ?, birth_date = ?, grade_level = ?, section = ?, min_target_weight = ?, max_target_weight = ?, parent_milk_consent = ?, participation_consent = ?, deworming_status = ?, is_4ps_beneficiary = ? WHERE student_id = ?");
         if(!$stmt) throw new Exception("Prepare failed: " . $conn->error);
         
-        // s (new_id), s (last), s (first), s (sex), s (birth), s (grade), s (section), d (min), d (max), s (orig_id)
-        $stmt->bind_param("sssssssdds", $new_lrn, $last_name, $first_name, $sex, $birth_date, $grade_level, $section, $min_target, $max_target, $original_lrn);
+        $stmt->bind_param("sssssssddiiiis", $new_lrn, $last_name, $first_name, $sex, $birth_date, $grade_level, $section, $min_target, $max_target, $parent_milk_consent, $participation_consent, $is_dewormed, $is_4ps, $original_lrn);
         
         if(!$stmt->execute()) throw new Exception("Failed to update student profile. LRN might be taken.");
 
-        // 2. Synchronize Allergies
-        // Clear old ones for this student
+        // Synchronize Allergies
         $del = $conn->prepare("DELETE FROM student_allergy_map WHERE student_id = ?");
         $del->bind_param("s", $new_lrn);
         $del->execute();
 
-        // Insert new ones
         if (isset($_POST['allergies']) && is_array($_POST['allergies'])) {
             $ins = $conn->prepare("INSERT INTO student_allergy_map (student_id, restriction_id) VALUES (?, ?)");
             foreach ($_POST['allergies'] as $rid) {

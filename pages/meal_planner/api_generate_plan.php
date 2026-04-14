@@ -38,13 +38,14 @@ try {
 
     $meal_a = $plan_data['meal_a'];
     $meal_b = $plan_data['meal_b']; // Can be NULL
+    $snack  = $plan_data['snack'] ?? null; // Can be NULL
 
-    $stmt = $conn->prepare("INSERT INTO daily_meal_plans (scheduled_date, meal_a_recipe_id, meal_b_recipe_id) VALUES (?, ?, ?)");
-    $stmt->bind_param('sss', $date, $meal_a, $meal_b);
+    $stmt = $conn->prepare("INSERT INTO daily_meal_plans (scheduled_date, meal_a_recipe_id, meal_b_recipe_id, snack_recipe_id) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param('ssss', $date, $meal_a, $meal_b, $snack);
     $stmt->execute();
 
     // Insert student assignments
-    $insert_meal_plan = $conn->prepare("INSERT INTO meal_plan (student_id, recipe_id, scheduled_date, actual_cost) VALUES (?, ?, ?, ?)");
+    $insert_meal_plan = $conn->prepare("INSERT INTO meal_plan (student_id, recipe_id, scheduled_date, actual_cost, with_snack) VALUES (?, ?, ?, ?, ?)");
     
     // We need cost of recipes
     $q_costs = "SELECT recipe_id, base_cost_per_serving FROM recipes WHERE recipe_id IN (?, ?)";
@@ -60,22 +61,29 @@ try {
     }
 
     $cost_a = $costs[$meal_a] ?? 0;
+    $blacklist = $plan_data['snack_blacklist'] ?? [];
     
     foreach ($plan_data['meal_a_list'] as $s_id) {
-        $insert_meal_plan->bind_param('sssd', $s_id, $meal_a, $date, $cost_a);
+        $snack_flag = in_array($s_id, $blacklist) ? 0 : 1;
+        $insert_meal_plan->bind_param('sssdi', $s_id, $meal_a, $date, $cost_a, $snack_flag);
         $insert_meal_plan->execute();
     }
 
     if ($meal_b && isset($costs[$meal_b])) {
         $cost_b = $costs[$meal_b];
         foreach ($plan_data['meal_b_list'] as $s_id) {
-            $insert_meal_plan->bind_param('sssd', $s_id, $meal_b, $date, $cost_b);
+            $snack_flag = in_array($s_id, $blacklist) ? 0 : 1;
+            $insert_meal_plan->bind_param('sssdi', $s_id, $meal_b, $date, $cost_b, $snack_flag);
             $insert_meal_plan->execute();
         }
     }
 
     $conn->commit();
-    echo json_encode(['success' => true, 'message' => "Plan generated successfully. Type: " . $plan_data['type']]);
+    echo json_encode([
+        'success' => true, 
+        'message' => "Plan generated successfully. Type: " . $plan_data['type'],
+        'debug_data' => $plan_data['debug'] ?? []
+    ]);
 
 } catch (Exception $e) {
     $conn->rollback();

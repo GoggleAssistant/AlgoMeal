@@ -7,6 +7,24 @@ require_once '../../includes/topbar.php';
 require_once '../../db.php';
 $isAdmin = ($role === 'Admin');
 
+// Budget Compliance Data
+$res_settings = $conn->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('total_allocated_budget','total_daily_budget')");
+$settings = [];
+while($row = $res_settings->fetch_assoc()) $settings[$row['setting_key']] = $row['setting_value'];
+$allocated_budget = (float)($settings['total_allocated_budget'] ?? 0);
+$daily_limit      = (float)($settings['total_daily_budget'] ?? 0);
+$meal_spent = (float)($conn->query("SELECT COALESCE(SUM(mp.actual_cost),0) as t FROM meal_plan mp JOIN daily_meal_plans dmp ON mp.scheduled_date = dmp.scheduled_date WHERE dmp.is_served = 1")->fetch_assoc()['t']);
+$meal_estimated = (float)($conn->query("SELECT COALESCE(SUM(mp.actual_cost),0) as t FROM meal_plan mp JOIN daily_meal_plans dmp ON mp.scheduled_date = dmp.scheduled_date WHERE dmp.is_served = 0")->fetch_assoc()['t']);
+$logs_spent = (float)($conn->query("SELECT COALESCE(SUM(amount),0) as t FROM budget_logs")->fetch_assoc()['t']);
+$total_spent = $meal_spent + $logs_spent;
+$remaining = $allocated_budget - $total_spent;
+$pct = $allocated_budget > 0 ? min(100, round(($total_spent / $allocated_budget) * 100, 1)) : 0;
+$bar_color = $pct >= 90 ? '#ef4444' : ($pct >= 70 ? '#f59e0b' : '#10b981');
+$total_days_planned = (int)($conn->query("SELECT COUNT(DISTINCT mp.scheduled_date) as c FROM meal_plan mp JOIN daily_meal_plans dmp ON mp.scheduled_date = dmp.scheduled_date WHERE dmp.is_served = 1")->fetch_assoc()['c']);
+$avg_daily_cost = $total_days_planned > 0 ? round($meal_spent / $total_days_planned, 2) : 0;
+$daily_status_color = ($daily_limit > 0 && $avg_daily_cost > $daily_limit) ? '#ef4444' : '#10b981';
+$daily_pct = $daily_limit > 0 ? min(100, round(($avg_daily_cost / $daily_limit) * 100, 1)) : 0;
+
 // Get Recipes
 $res_recipes = $conn->query("SELECT r.*, GROUP_CONCAT(DISTINCT dr.restriction_name) as allergens, GROUP_CONCAT(DISTINCT rat.restriction_id) as restriction_ids FROM recipes r LEFT JOIN recipe_allergen_tags rat ON r.recipe_id = rat.recipe_id LEFT JOIN dietary_restrictions dr ON rat.restriction_id = dr.restriction_id GROUP BY r.recipe_id ORDER BY r.recipe_name");
 $recipes = [];
@@ -124,8 +142,11 @@ $recipes_json = json_encode($recipes);
     .student-accordion.expanded .accordion-body { display: block; }
 
     .student-list-item { display: flex; justify-content: space-between; padding: 0.4rem; border-bottom: 1px solid #f1f5f9; font-size: 0.75rem; }
-    .btn-status-toggle { background: #f1f5f9; border: 1px solid transparent; color: var(--text-muted); padding: 3px 5px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+    .btn-status-toggle { background: #f1f5f9; border: 1px solid transparent; color: var(--text-muted); padding: 3px 5px; border-radius: 4px; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
     .btn-status-toggle.active { background: var(--btn-color); color: white; border-color: var(--btn-color); }
+    .btn-milk-toggle { background: #f1f5f9; color: #94a3b8; border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; padding: 0; }
+    .btn-milk-toggle.active { background: #60a5fa; color: white; border-color: #60a5fa; box-shadow: 0 2px 4px rgba(96,165,250,0.3); }
+    .btn-milk-toggle:disabled { opacity: 0.3; cursor: not-allowed; background: #f1f5f9 !important; color: #cbd5e1 !important; border-color: var(--border) !important; box-shadow: none !important; }
 
     /* Large Cal Grid */
     .big-cal-matrix { 
@@ -157,6 +178,7 @@ $recipes_json = json_encode($recipes);
     }
     .cal-day:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-md); }
     .cal-day.active { border-color: var(--primary); background: #f0f7ff; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+    .cal-day.today { border: 2px solid #cbd5e1; border-style: dashed; }
     .cal-day.disabled { background: #f8fafc; cursor: default; border-style: dashed; opacity: 0.5; }
     .cal-date { font-size: 1.2rem; font-weight: 900; color: var(--text-main); }
     .cal-indicator { height: 6px; border-radius: 3px; width: 100%; margin-top: auto; }
@@ -166,6 +188,49 @@ $recipes_json = json_encode($recipes);
 
 <div class="content">
     <div class="planner-grid">
+        
+        <!-- BUDGET COMPLIANCE BAR -->
+        <div class="workspace-panel" style="padding: 1.25rem 1.75rem;" id="budgetBar">
+
+            <!-- Row 1: Total Allocation -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span class="material-icons" style="color:<?= $bar_color ?>; font-size:18px;">account_balance_wallet</span>
+                    <span style="font-weight:800; font-size:0.8rem; color:var(--text-main);">Total Budget</span>
+                    <span class="budget-pct-badge" style="font-size:0.65rem; font-weight:700; background:<?= $pct >= 90 ? '#fee2e2' : ($pct >= 70 ? '#fef3c7' : '#d1fae5') ?>; color:<?= $bar_color ?>; padding:2px 8px; border-radius:20px;"><?= $pct ?>% Used</span>
+                </div>
+                <div style="display:flex; gap:1.5rem; font-size:0.75rem; font-weight:700;">
+                    <span style="color:var(--text-muted);">Allocated: <strong style="color:var(--text-main);">&#8369;<?= number_format($allocated_budget, 2) ?></strong></span>
+                    <span style="color:var(--text-muted);" title="Projected AI Cost for Active Unserved Plans">Est. Future Plans: <strong style="color:#f59e0b;">&#8369;<?= number_format($meal_estimated, 2) ?></strong></span>
+                    <span style="color:var(--text-muted);">Spent: <strong class="budget-spent-val" style="color:#ef4444;">&#8369;<?= number_format($total_spent, 2) ?></strong></span>
+                    <span style="color:var(--text-muted);">Remaining: <strong class="budget-remaining-val" style="color:<?= $bar_color ?>;">&#8369;<?= number_format($remaining, 2) ?></strong></span>
+                </div>
+            </div>
+            <div style="background:#f1f5f9; border-radius:100px; height:8px; overflow:hidden; margin-bottom:1rem;">
+                <div id="budgetBarFill" style="height:100%; width:<?= $pct ?>%; background:<?= $bar_color ?>; border-radius:100px; transition:width 0.6s ease;"></div>
+            </div>
+
+            <!-- Row 2: Daily Budget Limit -->
+            <div style="display:flex; justify-content:space-between; align-items:center; padding-top:0.75rem; border-top:1px dashed var(--border);">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span class="material-icons" style="color:<?= $daily_status_color ?>; font-size:18px;">today</span>
+                    <span style="font-weight:800; font-size:0.8rem; color:var(--text-main);">Daily Budget Limit</span>
+                    <?php if($daily_limit > 0): ?>
+                    <span style="font-size:0.65rem; font-weight:700; background:<?= $avg_daily_cost > $daily_limit ? '#fee2e2' : '#d1fae5' ?>; color:<?= $daily_status_color ?>; padding:2px 8px; border-radius:20px;">
+                        <?= $avg_daily_cost > $daily_limit ? '⚠ Over Limit' : '✓ Within Limit' ?>
+                    </span>
+                    <?php endif; ?>
+                </div>
+                <div style="display:flex; gap:1.5rem; font-size:0.78rem; font-weight:700;">
+                    <?php if($daily_limit > 0): ?>
+                    <span style="color:var(--text-muted);">Limit/Day: <strong style="color:var(--text-main);">&#8369;<?= number_format($daily_limit, 2) ?></strong></span>
+                    <span style="color:var(--text-muted);">Avg Cost/Day: <strong style="color:<?= $daily_status_color ?>;">&#8369;<?= number_format($avg_daily_cost, 2) ?></strong></span>
+                    <?php else: ?>
+                    <span style="color:var(--text-muted); font-style:italic;">No daily limit set &mdash; <a href="../management/management.php" style="color:var(--primary); font-weight:700;">Set in Management Hub</a></span>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
         
         <!-- MAIN WORKSPACE -->
         <div class="workspace-panel" id="mainWorkspace">
@@ -267,8 +332,9 @@ $recipes_json = json_encode($recipes);
 
                 for (let i = 1; i <= days; i++) {
                     let dStr = `${y}-${(m + 1).toString().padStart(2, '0')}-${i.toString().padStart(2, '0')}`;
+                    let isSelected = (dStr === currentSelDate);
                     let isToday = (dStr === new Date().toLocaleDateString('en-CA'));
-                    let extra = isToday ? ' active' : '';
+                    let extra = isSelected ? ' active' : (isToday ? ' today' : '');
 
                     let html = `<div class="cal-day${extra}" id="cday-${dStr}" onclick="selectDate('${dStr}')">
                                     <div class="cal-date">${i}</div>`;
@@ -299,22 +365,25 @@ $recipes_json = json_encode($recipes);
         // WORKSPACE LOGIC
         // ==========================================
         function checkConflict(student, recipeId) {
-            if (!student.restriction_ids || student.restriction_ids.length === 0) return false;
+            if (!student.restriction_ids || student.restriction_ids.length === 0) return null;
             const rec = recipes.find(r => r.recipe_id === recipeId);
-            if (!rec) return false;
+            if (!rec) return null;
             const recIds = rec.restriction_ids ? String(rec.restriction_ids).split(',').map(s => s.trim()) : [];
             const stuIds = Array.isArray(student.restriction_ids) ? student.restriction_ids.map(String) : String(student.restriction_ids).split(',').map(s => s.trim());
+            const stuNames = student.restriction_names ? student.restriction_names.split(',').map(s => s.trim()) : [];
+            
             const conflictMap = { '9': ['17'], '16': ['17'] };
-            for (const stuId of stuIds) {
+            for (let i = 0; i < stuIds.length; i++) {
+                const stuId = stuIds[i];
                 if (!stuId) continue;
-                if (recIds.includes(stuId)) return true;
+                if (recIds.includes(stuId)) return stuNames[i] || 'Restriction';
                 if (conflictMap[stuId]) {
                     for (const conflictingId of conflictMap[stuId]) {
-                        if (recIds.includes(conflictingId)) return true;
+                        if (recIds.includes(conflictingId)) return stuNames[i] || 'Restriction';
                     }
                 }
             }
-            return false;
+            return null;
         }
 
         window.toggleAcc = (id) => { document.getElementById(id).classList.toggle('expanded'); };
@@ -394,6 +463,10 @@ $recipes_json = json_encode($recipes);
             }
 
             html += `</div>`;
+            
+            if (currentPlan.snack) {
+                html += buildSnackCard(currentPlan.snack);
+            }
             document.getElementById('wsBody').innerHTML = html;
         }
 
@@ -414,19 +487,41 @@ $recipes_json = json_encode($recipes);
             if (list) {
                 list.sort((a, b) => a.name.localeCompare(b.name));
                 list.forEach(s => {
-                    const conflict = checkConflict(s, recipeId);
-                    const warnHtml = conflict ? `<span style="color:#b91c1c; font-size:10px; font-weight:800;">⚠ CONFLICT</span>` : '';
+                    const conflictName = checkConflict(s, recipeId);
+                    const warnHtml = conflictName ? `<span style="color:#b91c1c; font-size:10px; font-weight:800; background:#fee2e2; padding:1px 4px; border-radius:4px; margin-left:4px;">⚠ ${conflictName.toUpperCase()}</span>` : '';
                     const status = s.feeding_status || 'Served';
+                    const hasMilk = s.with_milk === 1;
+                    const milkAllowed = s.milk_consent === 1 && !s.restriction_ids.map(Number).includes(1);
+                    const hasSnack = s.with_snack === 1;
+                    const snackAllowed = currentPlan.snack ? !checkConflict(s, currentPlan.snack) : true;
+                    
                     const statusHtml = `
-                    <div style="display:flex; gap: 4px; margin-right: 12px;">
-                        <button onclick="updateFeeding('${s.id}', 'Served')" class="btn-status-toggle ${status === 'Served' ? 'active' : ''}" style="--btn-color: #10b981;"><span class="material-icons" style="font-size: 14px;">done</span></button>
-                        <button onclick="updateFeeding('${s.id}', 'Absent')" class="btn-status-toggle ${status === 'Absent' ? 'active' : ''}" style="--btn-color: #ef4444;"><span class="material-icons" style="font-size: 14px;">close</span></button>
+                    <div style="display:flex; align-items: center; gap: 6px; margin-right: 12px;">
+                        <div style="display:flex; gap: 4px; border-right: 1px solid var(--border); padding-right: 8px;">
+                            <button onclick="updateFeeding('${s.id}', 'Served')" class="btn-status-toggle ${status === 'Served' ? 'active' : ''}" title="Served" style="--btn-color: #10b981;"><span class="material-icons" style="font-size: 14px;">done</span></button>
+                            <button onclick="updateFeeding('${s.id}', 'Absent')" class="btn-status-toggle ${status === 'Absent' ? 'active' : ''}" title="Absent" style="--btn-color: #ef4444;"><span class="material-icons" style="font-size: 14px;">close</span></button>
+                        </div>
+                        <div style="display:flex; gap: 4px;">
+                            <button onclick="toggleMilk('${s.id}', ${hasMilk ? 0 : 1})" 
+                                    class="btn-milk-toggle ${hasMilk ? 'active' : ''}" 
+                                    ${!milkAllowed ? 'disabled' : ''} 
+                                    title="${!milkAllowed ? 'Milk Restriction Active' : (hasMilk ? 'Milk Served' : 'Add Milk')}">
+                                <span class="material-icons" style="font-size: 16px;">${hasMilk ? 'water_drop' : 'local_drink'}</span>
+                            </button>
+                            <button onclick="toggleSnack('${s.id}', ${hasSnack ? 0 : 1})" 
+                                    class="btn-milk-toggle ${hasSnack ? 'active' : ''}" 
+                                    ${!snackAllowed ? 'disabled' : ''} 
+                                    style="color: ${hasSnack ? '#f59e0b' : (!snackAllowed ? '#cbd5e1' : '#94a3b8')}; border-color: ${hasSnack ? '#f59e0b' : '#e2e8f0'}; background: ${hasSnack ? '#fffbeb' : (!snackAllowed ? '#f1f5f9' : '#fff')};"
+                                    title="${!snackAllowed ? 'Snack Restriction Active' : (hasSnack ? 'Snack Served' : 'Add Snack')}">
+                                <span class="material-icons" style="font-size: 16px;">${hasSnack ? 'bakery_dining' : 'cookie'}</span>
+                            </button>
+                        </div>
                     </div>`;
 
                     let swapHtml = targetListParams ? `<button onclick="swapStud('${s.id}', '${targetListParams.to}')" style="background:none; border:none; color:var(--text-muted); cursor:pointer;"><span class="material-icons" style="font-size:16px;">swap_horiz</span></button>` : '';
 
                     studentsHtml += `
-                    <div class="student-list-item" style="align-items: center; ${conflict ? 'background:#fffbeb;' : ''}">
+                    <div class="student-list-item" style="align-items: center; ${conflictName ? 'background:#fffbeb;' : ''}">
                         <div style="flex: 1;">
                             <span style="font-weight: 700;">${s.name}</span> <span style="color:var(--text-muted); font-size:0.7rem;">${s.section}</span>
                             ${warnHtml}
@@ -452,12 +547,61 @@ $recipes_json = json_encode($recipes);
             </div>`;
         }
 
+        function buildSnackCard(snackId) {
+            const rec = recipes.find(r => r.recipe_id === snackId);
+            if (!rec) return '';
+            return `
+            <div style="margin-top: 1.5rem; background: #fffbeb; border: 2px dashed #fcd34d; padding: 1.25rem; border-radius: 12px; display:flex; align-items:center; gap: 1.5rem;">
+                <div style="background:#f59e0b; width: 48px; height: 48px; border-radius: 12px; display:flex; align-items:center; justify-content:center; color:white;">
+                    <span class="material-icons" style="font-size: 24px;">bakery_dining</span>
+                </div>
+                <div>
+                    <div style="font-size:0.75rem; font-weight:800; color:#b45309; text-transform:uppercase;">Daily Snack Attachment</div>
+                    <h3 style="margin: 0.15rem 0 0 0; color:#78350f; font-size:1.1rem; font-weight: 900;">${rec.recipe_name}</h3>
+                </div>
+            </div>`;
+        }
+
         window.generateToday = async () => {
             if (!currentSelDate) return;
             try {
                 const res = await fetch('api_generate_plan.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: currentSelDate }) });
                 const data = await res.json();
-                if (data.success) { renderCalendar(); selectDate(currentSelDate); }
+                if (data.success) { 
+                    renderCalendar(); 
+                    selectDate(currentSelDate); 
+                    
+                    if (window.debugMode && data.debug_data) {
+                        let rows = data.debug_data.map(d => `
+                            <tr style="border-bottom: 1px solid var(--border);">
+                                <td style="padding: 0.5rem; font-weight:700;">${d.name}</td>
+                                <td style="padding: 0.5rem; text-align:right; color:#10b981;">${d.variety > 0 ? '+'+d.variety : 0}</td>
+                                <td style="padding: 0.5rem; text-align:right; color:#d93025;">${d.category_fatigue}</td>
+                                <td style="padding: 0.5rem; text-align:right; color:#3b82f6;">+${d.nutrition}</td>
+                                <td style="padding: 0.5rem; text-align:right; color:#d93025;">${d.restrictions}</td>
+                                <td style="padding: 0.5rem; text-align:right; font-weight:900;">${d.total}</td>
+                            </tr>
+                        `).join('');
+
+                        AlgoModal.show({
+                            title: '<span style="color:#b91c1c;"><span class="material-icons" style="vertical-align:middle;">bug_report</span> Sandbox: Heuristic Math</span>',
+                            body: `<table style="width:100%; border-collapse:collapse; font-size:0.8rem;">
+                                <thead>
+                                    <tr style="color:var(--text-muted); font-size:0.65rem; border-bottom:2px solid var(--border);">
+                                        <th style="padding:0.5rem; text-align:left;">RECIPE</th>
+                                        <th style="padding:0.5rem; text-align:right;">VARIETY</th>
+                                        <th style="padding:0.5rem; text-align:right;">FATIGUE</th>
+                                        <th style="padding:0.5rem; text-align:right;">MACROS</th>
+                                        <th style="padding:0.5rem; text-align:right;">RESTRICTIONS</th>
+                                        <th style="padding:0.5rem; text-align:right;">TOTAL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rows}</tbody>
+                            </table>`,
+                            footer: `<button class="btn-m3 btn-m3-outline" onclick="AlgoModal.close()">Close Logs</button>`
+                        });
+                    }
+                }
             } catch (e) { }
         };
 
@@ -503,9 +647,67 @@ $recipes_json = json_encode($recipes);
             try {
                 const res = await fetch('api_bulk_generate.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ start_date: start, days_count: days, weekdays: weekdays, overwrite: overw }) });
                 const data = await res.json();
-                if (data.success) { renderCalendar(); if (currentSelDate) selectDate(currentSelDate); }
+                if (data.success) { 
+                    renderCalendar(); 
+                    if (currentSelDate) selectDate(currentSelDate); 
+                    refreshBudgetBar(); 
+                    
+                    // Show Summary Modal
+                    let detailsHtml = '<div style="max-height: 400px; overflow-y: auto; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">';
+                    if (data.details && data.details.length > 0) {
+                        data.details.forEach(d => {
+                            const recA = recipes.find(r => r.recipe_id === d.meal_a);
+                            const recB = d.meal_b ? recipes.find(r => r.recipe_id === d.meal_b) : null;
+                            detailsHtml += `
+                                <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.75rem 0; border-bottom: 1px dashed var(--border);">
+                                    <div>
+                                        <div style="font-weight:900; color:var(--text-main); font-size:0.85rem;">${new Date(d.date).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})}</div>
+                                        <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Managed deployment confirmed</div>
+                                    </div>
+                                    <div style="text-align:right;">
+                                        <div style="font-size:0.7rem; font-weight:800; color:var(--primary);">${recA ? recA.recipe_name : 'Unknown'}</div>
+                                        ${recB ? `<div style="font-size:0.7rem; font-weight:800; color:var(--text-muted);">${recB.recipe_name}</div>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        detailsHtml += '<div style="text-align:center; padding:2rem; color:var(--text-muted);">No new plans were created (Items may have been skipped due to existing records).</div>';
+                    }
+                    detailsHtml += '</div>';
+
+                    AlgoModal.show({
+                        title: '<span style="display:flex; align-items:center; gap:8px;"><span class="material-icons" style="color:var(--success);">verified</span> Deployment Summary</span>',
+                        body: `
+                            <div style="margin-bottom:1rem; font-weight:700; color:var(--text-main); font-size:1rem;">${data.message}</div>
+                            ${detailsHtml}
+                        `,
+                        footer: '<button class="btn-m3 btn-m3-primary" onclick="AlgoModal.close()">Mission Acknowledged</button>'
+                    });
+                }
             } catch (e) { }
         };
+
+        async function refreshBudgetBar() {
+            try {
+                const res = await fetch('../../api_budget_status.php');
+                const d = await res.json();
+                if (!d) return;
+                const pct = d.pct;
+                const color = pct >= 90 ? '#ef4444' : (pct >= 70 ? '#f59e0b' : '#10b981');
+                const bgBadge = pct >= 90 ? '#fee2e2' : (pct >= 70 ? '#fef3c7' : '#d1fae5');
+                const bar = document.getElementById('budgetBar');
+                if (!bar) return;
+                bar.querySelector('.budget-pct-badge').style.background = bgBadge;
+                bar.querySelector('.budget-pct-badge').style.color = color;
+                bar.querySelector('.budget-pct-badge').textContent = pct + '% Used';
+                bar.querySelector('.budget-spent-val').textContent = '₱' + Number(d.spent).toLocaleString('en-PH', {minimumFractionDigits:2});
+                bar.querySelector('.budget-remaining-val').style.color = color;
+                bar.querySelector('.budget-remaining-val').textContent = '₱' + Number(d.remaining).toLocaleString('en-PH', {minimumFractionDigits:2});
+                const fill = document.getElementById('budgetBarFill');
+                if (fill) { fill.style.width = Math.min(pct, 100) + '%'; fill.style.background = color; }
+            } catch(e) {}
+        }
 
         window.openRescheduleModal = () => {
             let tempDate = new Date(currentSelDate);
@@ -552,6 +754,24 @@ $recipes_json = json_encode($recipes);
             try { fetch('api_update_status.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ student_id: studId, date: currentSelDate, status: status }) }); } catch (e) { }
         };
 
+        window.toggleMilk = async (studId, state) => {
+            if (currentPlan.is_served) return;
+            const updateInList = (list) => { let s = list.find(x => x.id === studId); if (s) s.with_milk = state; };
+            if (currentPlan.meal_a_list) updateInList(currentPlan.meal_a_list);
+            if (currentPlan.meal_b_list) updateInList(currentPlan.meal_b_list);
+            renderPlanUI();
+            try { fetch('api_update_milk.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ student_id: studId, date: currentSelDate, with_milk: state }) }); } catch(e) {}
+        };
+
+        window.toggleSnack = async (studId, state) => {
+            if (currentPlan.is_served) return;
+            const updateInList = (list) => { let s = list.find(x => x.id === studId); if (s) s.with_snack = state; };
+            if (currentPlan.meal_a_list) updateInList(currentPlan.meal_a_list);
+            if (currentPlan.meal_b_list) updateInList(currentPlan.meal_b_list);
+            renderPlanUI();
+            try { fetch('api_update_snack.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ student_id: studId, date: currentSelDate, with_snack: state }) }); } catch(e) {}
+        };
+
         window.swapStud = async (studId, toList) => {
             let s = null; let fromIdx = -1;
             if (currentPlan.meal_a_list && (fromIdx = currentPlan.meal_a_list.findIndex(x => x.id === studId)) > -1) s = currentPlan.meal_a_list.splice(fromIdx, 1)[0];
@@ -564,8 +784,44 @@ $recipes_json = json_encode($recipes);
         };
 
         window.lockPlan = async () => {
-            if (!await AlgoModal.confirm('Verify & Serve', 'Mark this plan as served?')) return;
-            try { fetch('api_lock_plan.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: currentSelDate }) }).then(() => { renderCalendar(); selectDate(currentSelDate); }); } catch (e) { }
+            const servedCount = (currentPlan.meal_a_list ? currentPlan.meal_a_list.filter(s => (s.feeding_status || 'Served') === 'Served').length : 0) + 
+                                (currentPlan.meal_b_list ? currentPlan.meal_b_list.filter(s => (s.feeding_status || 'Served') === 'Served').length : 0);
+            
+            if (servedCount === 0) return AlgoModal.alert('Strategy Warning', 'Cannot finalize a plan with zero served students.', 'danger');
+
+            const body = `
+                <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border);">
+                    <p style="margin: 0 0 1rem 0; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">To ensure accurate fiscal reporting in the Management Hub, please enter the total actual expenditure for today's feeding session.</p>
+                    <div style="display:flex; flex-direction:column; gap: 0.5rem;">
+                        <label style="display:block; font-size: 0.75rem; font-weight: 700; color:var(--text-main);">ACTUAL TOTAL COST (₱)</label>
+                        <div style="position:relative;">
+                            <span style="position:absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight:700; color:var(--text-muted);">₱</span>
+                            <input type="number" id="actualTotalCost" step="0.01" value="${(servedCount * 27).toFixed(2)}" style="width:100%; border:1px solid var(--border); padding:0.6rem; padding-left: 1.8rem; border-radius:8px; font-weight:900; font-size:1.1rem; color:var(--primary);">
+                        </div>
+                        <p style="margin-top:0.5rem; font-size:0.75rem; font-weight:600; color:var(--text-muted);">This amount will be distributed among ${servedCount} served beneficiaries.</p>
+                    </div>
+                </div>
+            `;
+            
+            AlgoModal.show({ 
+                title: '<span style="display:flex; align-items:center; gap:8px;"><span class="material-icons" style="color:var(--success);">verified</span> Verify & Secure Mission</span>', 
+                body: body, 
+                footer: `<button class="btn-m3 btn-m3-outline" onclick="AlgoModal.close()">Return to Draft</button><button class="btn-m3 btn-m3-primary" onclick="runLockPlan()"><span class="material-icons" style="font-size:16px;">lock</span> Finalize Consumption</button>` 
+            });
+        };
+
+        window.runLockPlan = async () => {
+            const cost = document.getElementById('actualTotalCost').value;
+            if (!cost || cost <= 0) return AlgoModal.alert('Data Error', 'Please enter a valid total cost.');
+            
+            AlgoModal.close();
+            try { 
+                fetch('api_lock_plan.php', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ date: currentSelDate, total_cost: parseFloat(cost) }) 
+                }).then(() => { renderCalendar(); selectDate(currentSelDate); refreshBudgetBar(); }); 
+            } catch (e) { }
         };
 
         window.unlockPlan = async () => {
@@ -574,23 +830,28 @@ $recipes_json = json_encode($recipes);
         };
 
         window.openEditRecipesModal = () => {
-            let options = recipes.map(r => `<option value="${r.recipe_id}">${r.recipe_name}</option>`).join('');
+            let options = recipes.filter(r => r.category !== 'Snack').map(r => `<option value="${r.recipe_id}">${r.recipe_name}</option>`).join('');
+            let snackOptions = recipes.filter(r => r.category === 'Snack').map(r => `<option value="${r.recipe_id}">${r.recipe_name}</option>`).join('');
+            
             const body = `
                 <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); display:flex; flex-direction:column; gap:1.25rem;">
                     <div><label style="display:block; font-size: 0.75rem; font-weight: 700; color:var(--primary); margin-bottom: 0.4rem; text-transform:uppercase;">Primary Profile (Meal A)</label><select id="erMealA" style="width:100%; padding:0.6rem; border:1px solid var(--border); border-radius:8px; font-weight:600; cursor:pointer;">${options}</select></div>
                     <div><label style="display:block; font-size: 0.75rem; font-weight: 700; color:var(--text-muted); margin-bottom: 0.4rem; text-transform:uppercase;">Secondary Mission (Meal B)</label><select id="erMealB" style="width:100%; padding:0.6rem; border:1px solid var(--border); border-radius:8px; font-weight:600; cursor:pointer;"><option value="">-- No Secondary Option --</option>${options}</select></div>
+                    <div style="border-top:1px dashed var(--border); padding-top:1rem;"><label style="display:block; font-size: 0.75rem; font-weight: 700; color:#d97706; margin-bottom: 0.4rem; text-transform:uppercase;">Appended Snack Attachment</label><select id="erSnack" style="width:100%; padding:0.6rem; border:1px solid #fcd34d; border-radius:8px; font-weight:600; cursor:pointer;"><option value="">-- Random Snack Generated --</option>${snackOptions}</select></div>
                 </div>
             `;
             AlgoModal.show({ title: 'Edit Mission Components', body: body, footer: `<button class="btn-m3 btn-m3-outline" onclick="AlgoModal.close()">Cancel</button><button class="btn-m3 btn-m3-primary" onclick="runUpdateRecipes()">Override Profiles</button>` });
             document.getElementById('erMealA').value = currentPlan.meal_a;
-            document.getElementById('erMealB').value = currentPlan.meal_b || '';
+            if(currentPlan.meal_b) document.getElementById('erMealB').value = currentPlan.meal_b;
+            if(currentPlan.snack) document.getElementById('erSnack').value = currentPlan.snack;
         };
 
         window.runUpdateRecipes = async () => {
             const mA = document.getElementById('erMealA').value;
             const mB = document.getElementById('erMealB').value;
+            const mS = document.getElementById('erSnack').value;
             AlgoModal.close();
-            try { fetch('api_update_day_recipes.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: currentSelDate, meal_a: mA, meal_b: mB }) }).then(() => { renderCalendar(); selectDate(currentSelDate); }); } catch (e) { }
+            try { fetch('api_update_day_recipes.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: currentSelDate, meal_a: mA, meal_b: mB, snack: mS }) }).then(() => { renderCalendar(); selectDate(currentSelDate); }); } catch (e) { }
         };
 
         // Initialize

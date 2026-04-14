@@ -10,42 +10,60 @@ if (($_SESSION['role'] ?? '') !== 'Admin') {
     exit;
 }
 
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $student_id = $_POST['student_id'] ?? '';
-    $height = $_POST['height'] ?? '';
-    $weight = $_POST['weight'] ?? '';
+    $height = (float)($_POST['height'] ?? 0);
+    $weight = (float)($_POST['weight'] ?? 0);
     $assessment_date = $_POST['assessment_date'] ?? date('Y-m-d');
-    $created_by = $_SESSION['user_id'] ?? 1; // Fallback to 1 if testing without deep login
+    $created_by = $_SESSION['user_id'] ?? 1;
 
-    if (empty($student_id) || empty($height) || empty($weight)) {
-        echo json_encode(['success' => false, 'error' => 'Missing required fields.']);
+    if (empty($student_id) || $height <= 0 || $weight <= 0) {
+        echo json_encode(['success' => false, 'error' => 'Missing or invalid required fields (Height/Weight).']);
         exit;
     }
 
-    // Calculate BMI algorithmically
+    // Auto-compute targets based on NEW height
+    $min_target = 18.5 * pow($height / 100, 2);
+    $max_target = 24.9 * pow($height / 100, 2);
+
+    // Calculate BMI and default status
     $height_m = $height / 100;
     $bmi = $weight / ($height_m * $height_m);
-    
     $status = getNutritionalStatus($bmi);
 
-    $stmt = $conn->prepare("INSERT INTO nutritional_record (student_id, created_by, height, weight, bmi, nutritional_status, assessment_date) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    if($stmt) {
-        $stmt->bind_param("sidddss", $student_id, $created_by, $height, $weight, $bmi, $status, $assessment_date);
-        if(!$stmt->execute()) throw new Exception("Database insertion failed.");
+    // Fetch student birthdate for age calculation
+    $stmt_b = $conn->prepare("SELECT birth_date FROM student WHERE student_id = ?");
+    $stmt_b->bind_param("s", $student_id);
+    $stmt_b->execute();
+    $s_data = $stmt_b->get_result()->fetch_assoc();
+    
+    $age_y = 0; $age_m = 0;
+    if ($s_data) {
+        $dob = new DateTime($s_data['birth_date']);
+        $ref = new DateTime($assessment_date);
+        $diff = $ref->diff($dob);
+        $age_y = $diff->y;
+        $age_m = $diff->m;
+    }
 
-        // Optional: Update Student Target Range
-        $min_target_weight = $_POST['min_target_weight'] ?? '';
-        $max_target_weight = $_POST['max_target_weight'] ?? '';
-        if (!empty($min_target_weight) && !empty($max_target_weight)) {
-            $upd = $conn->prepare("UPDATE student SET min_target_weight = ?, max_target_weight = ? WHERE student_id = ?");
-            $upd->bind_param("dds", $min_target_weight, $max_target_weight, $student_id);
-            $upd->execute();
-        }
+    $conn->begin_transaction();
 
+    try {
+        // 1. Insert Record
+        $stmt = $conn->prepare("INSERT INTO nutritional_record (student_id, created_by, height, weight, bmi, nutritional_status, assessment_date, age_years, age_months) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sidddssii", $student_id, $created_by, $height, $weight, $bmi, $status, $assessment_date, $age_y, $age_m);
+        if(!$stmt->execute()) throw new Exception("Assessment log failed.");
+
+        // 2. Sync Student Target Weights
+        $upd = $conn->prepare("UPDATE student SET min_target_weight = ?, max_target_weight = ? WHERE student_id = ?");
+        $upd->bind_param("dds", $min_target, $max_target, $student_id);
+        $upd->execute();
+
+        $conn->commit();
         echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'error' => 'Statement prep failed.']);
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 } else {
     echo json_encode(['success' => false, 'error' => 'Invalid request method.']);

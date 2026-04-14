@@ -22,6 +22,7 @@ function generate_plan_for_date($conn, $target_date, $budget_limit) {
                   AND dp.scheduled_date < ?) as recent_count
         FROM recipes r
         LEFT JOIN recipe_allergen_tags rat ON r.recipe_id = rat.recipe_id
+        WHERE r.category != 'Snack'
         GROUP BY r.recipe_id
     ";
     
@@ -29,33 +30,126 @@ function generate_plan_for_date($conn, $target_date, $budget_limit) {
     $stmt->bind_param('sss', $target_date, $target_date, $target_date);
     $stmt->execute();
     $res_recipes = $stmt->get_result();
+
+    // -- NEW: RECENT CATEGORY TRACKING --
+    // Find the categories of the most recent plan session to prevent category fatigue
+    $recent_cats = [];
+    $q_last_cats = "
+        SELECT r.category 
+        FROM daily_meal_plans dp
+        JOIN recipes r ON (dp.meal_a_recipe_id = r.recipe_id OR dp.meal_b_recipe_id = r.recipe_id)
+        WHERE dp.scheduled_date = (SELECT MAX(scheduled_date) FROM daily_meal_plans WHERE scheduled_date < ?)
+    ";
+    $stmt_lc = $conn->prepare($q_last_cats);
+    $stmt_lc->bind_param('s', $target_date);
+    $stmt_lc->execute();
+    $res_lc = $stmt_lc->get_result();
+    while($lc = $res_lc->fetch_assoc()) $recent_cats[] = $lc['category'];
+
     
+    $recipes_debug_logs = [];
     $recipes = [];
     while ($row = $res_recipes->fetch_assoc()) {
         $row['restriction_ids'] = $row['restriction_ids'] ? array_filter(explode(',', $row['restriction_ids'])) : [];
         
-        // --- NEW POINT SYSTEM ---
-        // 1. Initial 10 points
-        $score = 10;
+        $score = 0;
+        $log = [];
         
-        // 2. Minus 1 point for every dietary restriction
-        $score -= count($row['restriction_ids']);
+        // 1. Dietary restrictions base penalty
+        $restr_penalty = count($row['restriction_ids']);
+        $score -= $restr_penalty;
+        $log['restrictions'] = -$restr_penalty;
         
-        // 3. +2 points for every day it hasn't shown up
+        // 2. Variety Buff (+5 points per day)
         if ($row['last_served']) {
             $diff = strtotime($target_date) - strtotime($row['last_served']);
             $days = floor($diff / 86400); // Days since last served
-            // Ensure no negative days if generating in the past out of order
             $days = max(0, $days);
-            $score += ($days * 2);
+            $var_buff = ($days * 5);
+            $score += $var_buff;
+            $log['variety'] = $var_buff;
         } else {
-            // If never served, treat it as 14 days unserved to give it a starting buff
-            $score += (14 * 2); 
+            // Massive buff if completely unserved (simulates 30 unserved days)
+            $var_buff = (30 * 5);
+            $score += $var_buff;
+            $log['variety'] = $var_buff;
         }
+
+        // 3. Category Fatigue Penalty
+        $cat_pen = 0;
+        if (in_array($row['category'], $recent_cats)) {
+            $cat_pen = -10;
+            $score += $cat_pen;
+        }
+        $log['category_fatigue'] = $cat_pen;
+
+        // 4. Nutritional Bonuses
+        // +2 points for every 50 kcal
+        $nut_kcal = (floor($row['energy_kcal'] / 50) * 2);
+        // +1 point for every 5g protein
+        $nut_prot = (floor($row['protein_g'] / 5) * 1);
+        $score += ($nut_kcal + $nut_prot);
+        $log['nutrition'] = ($nut_kcal + $nut_prot);
         
         $row['score'] = $score;
         $recipes[] = $row;
+        
+        $log['name'] = $row['recipe_name'];
+        $log['total'] = $score;
+        $recipes_debug_logs[] = $log;
     }
+    
+    // Sort debug logs for UI
+    usort($recipes_debug_logs, function($a, $b) {
+        return $b['total'] <=> $a['total'];
+    });
+
+    // ----------------------------------------------------
+    // PARALLEL SNACK MINI-RECOMMENDATION SYSTEM
+    // ----------------------------------------------------
+    $q_snacks = "
+        SELECT r.*, GROUP_CONCAT(DISTINCT rat.restriction_id) as restriction_ids,
+               (SELECT MAX(scheduled_date) 
+                FROM daily_meal_plans dp 
+                WHERE dp.snack_recipe_id = r.recipe_id
+                  AND dp.scheduled_date < ?) as last_served
+        FROM recipes r
+        LEFT JOIN recipe_allergen_tags rat ON r.recipe_id = rat.recipe_id
+        WHERE r.category = 'Snack'
+        GROUP BY r.recipe_id
+    ";
+    
+    $stmt_snacks = $conn->prepare($q_snacks);
+    $stmt_snacks->bind_param('s', $target_date);
+    $stmt_snacks->execute();
+    $res_snacks = $stmt_snacks->get_result();
+    
+    $snacks = [];
+    while ($row = $res_snacks->fetch_assoc()) {
+        $row['restriction_ids'] = $row['restriction_ids'] ? array_filter(explode(',', $row['restriction_ids'])) : [];
+        $score = 0;
+        
+        $restr_penalty = count($row['restriction_ids']);
+        $score -= $restr_penalty;
+        
+        if ($row['last_served']) {
+            $diff = strtotime($target_date) - strtotime($row['last_served']);
+            $score += (max(0, floor($diff / 86400)) * 5);
+        } else {
+            $score += (30 * 5);
+        }
+
+        $score += (floor($row['energy_kcal'] / 50) * 2);
+        $score += (floor($row['protein_g'] / 5) * 1);
+        
+        $row['score'] = $score;
+        $snacks[] = $row;
+    }
+    
+    usort($snacks, function($a, $b) {
+        if ($a['score'] == $b['score']) return strcmp($a['recipe_id'], $b['recipe_id']);
+        return $b['score'] <=> $a['score'];
+    });
 
     
     // 2. Get Students and their restrictions and current BMI/Nutritional Status to find Targets
@@ -151,35 +245,76 @@ function generate_plan_for_date($conn, $target_date, $budget_limit) {
     $eval_a = $evaluateMeal($meal_a, $students);
     
     if (count($eval_a['cannot_eat']) === 0) {
+        // ------------------
+        // Determine Snack via Mini-Heuristic
+        // ------------------
+        $snack_id = null;
+        $snack_blacklist = [];
+        if (count($snacks) > 0) {
+            $best_snack = $snacks[0];
+            $snack_id = $best_snack['recipe_id'];
+            $eval_snack = $evaluateMeal($best_snack, $students);
+            $snack_blacklist = array_column($eval_snack['cannot_eat'], 'student_id');
+        }
+
         // Everyone can eat Meal A! Single meal plan.
         return [
             'success'     => true,
             'meal_a'      => $meal_a['recipe_id'],
             'meal_b'      => null,
+            'snack'       => $snack_id,
+            'snack_blacklist' => $snack_blacklist,
             'meal_a_list' => array_column($eval_a['can_eat'], 'student_id'),
             'meal_b_list' => [],
-            'type'        => 'single'
+            'type'        => 'single',
+            'debug'       => array_slice($recipes_debug_logs, 0, 15)
         ];
     } else {
         // Some students cannot eat Meal A. We need a Meal B for them.
         // Find the next highest scoring recipe that ALL excluded students can eat.
+        // To find the best Meal B, we clone the recipes (except Meal A) 
+        // and apply an intra-day category variety penalty (-10) before picking.
+        $b_candidates = [];
+        for ($i = 1; $i < count($recipes); $i++) {
+            $c = $recipes[$i];
+            if ($c['category'] === $meal_a['category']) {
+                $c['score'] -= 10;
+            }
+            $b_candidates[] = $c;
+        }
+        
+        // Re-sort candidates for Meal B based on adjusted scores
+        usort($b_candidates, function($a, $b) {
+            if ($a['score'] == $b['score']) return strcmp($a['recipe_id'], $b['recipe_id']);
+            return $b['score'] <=> $a['score'];
+        });
+
         $meal_b = null;
         $meal_b_students = [];
         
-        for ($i = 1; $i < count($recipes); $i++) {
-            $candidate_b = $recipes[$i];
-            
+        foreach ($b_candidates as $candidate_b) {
             // Check if candidate covers students who can't eat Meal A
             $eval_b = $evaluateMeal($candidate_b, $eval_a['cannot_eat']);
             
             if (count($eval_b['cannot_eat']) === 0) {
-                // Works perfectly for all excluded users!
                 $meal_b = $candidate_b;
                 $meal_b_students = $eval_b['can_eat'];
                 break;
             }
         }
         
+        // ------------------
+        // Determine Snack via Mini-Heuristic
+        // ------------------
+        $snack_id = null;
+        $snack_blacklist = [];
+        if (count($snacks) > 0) {
+            $best_snack = $snacks[0];
+            $snack_id = $best_snack['recipe_id'];
+            $eval_snack = $evaluateMeal($best_snack, $students);
+            $snack_blacklist = array_column($eval_snack['cannot_eat'], 'student_id');
+        }
+
         if ($meal_b) {
             // Found a working pair.
             // Students who can eat Meal A stay on Meal A. The rest get Meal B.
@@ -187,9 +322,12 @@ function generate_plan_for_date($conn, $target_date, $budget_limit) {
                 'success'     => true,
                 'meal_a'      => $meal_a['recipe_id'],
                 'meal_b'      => $meal_b['recipe_id'],
+                'snack'       => $snack_id,
+                'snack_blacklist' => $snack_blacklist,
                 'meal_a_list' => array_column($eval_a['can_eat'], 'student_id'),
                 'meal_b_list' => array_column($meal_b_students, 'student_id'),
-                'type'        => 'conflict_pair'
+                'type'        => 'conflict_pair',
+                'debug'       => array_slice($recipes_debug_logs, 0, 15)
             ];
         } else {
             // Failsafe: if NO Meal B covers the remaining students perfectly,
@@ -200,11 +338,16 @@ function generate_plan_for_date($conn, $target_date, $budget_limit) {
                 'success'     => true,
                 'meal_a'      => $meal_a['recipe_id'],
                 'meal_b'      => $meal_b['recipe_id'],
+                'snack'       => $snack_id,
+                'snack_blacklist' => $snack_blacklist,
                 'meal_a_list' => array_column($eval_a['can_eat'], 'student_id'),
                 'meal_b_list' => array_column($eval_b['can_eat'], 'student_id'),
-                'type'        => 'fallback_pair'
+                'type'        => 'fallback_pair',
+                'debug'       => array_slice($recipes_debug_logs, 0, 15)
             ];
         }
     }
+    
+    return ['success' => false, 'message' => 'No active recipes could be analyzed.', 'debug' => array_slice($recipes_debug_logs, 0, 15)];
 }
 ?>

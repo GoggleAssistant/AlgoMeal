@@ -4,10 +4,8 @@ require_once '../../db.php';
 
 header('Content-Type: application/json');
 
-if (($_SESSION['role'] ?? '') !== 'Admin') {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized: Administrator privileges required to manage recipes.']);
-    exit;
-}
+// Roles removed - allow all logged in users to manage recipes
+
 
 $action = $_POST['action'] ?? 'add';
 $recipe_id = $_POST['recipe_id'] ?? null;
@@ -22,6 +20,19 @@ $ing_amounts = $_POST['ing_amounts'] ?? [];
 $ing_units = $_POST['ing_units'] ?? [];
 $instructions = $_POST['instructions'] ?? [];
 $hex_color = $_POST['hex_color'] ?? '#3b82f6';
+$category  = $_POST['category'] ?? 'General';
+
+// Auto-assign color from category
+$category_colors = [
+    'Rice Meal'  => '#f59e0b',
+    'Soup'       => '#0ea5e9',
+    'Viand'      => '#ef4444',
+    'Pasta'      => '#f97316',
+    'Snack'      => '#a855f7',
+    'Vegetable'  => '#10b981',
+    'General'    => '#64748b',
+];
+$hex_color = $category_colors[$category] ?? '#64748b';
 
 if ($action === 'delete') {
     if (empty($recipe_id)) {
@@ -48,11 +59,11 @@ if ($action === 'add') {
     $next_id = 'REC' . str_pad(($row['max_id'] ?? 0) + 1, 3, '0', STR_PAD_LEFT);
     $recipe_id = $next_id;
 
-    $stmt = $conn->prepare("INSERT INTO recipes (recipe_id, recipe_name, description, energy_kcal, protein_g, base_cost_per_serving, hex_color) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssidds", $recipe_id, $recipe_name, $description, $kcal, $protein, $cost, $hex_color);
+    $stmt = $conn->prepare("INSERT INTO recipes (recipe_id, recipe_name, category, description, energy_kcal, protein_g, base_cost_per_serving, hex_color) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssssidds", $recipe_id, $recipe_name, $category, $description, $kcal, $protein, $cost, $hex_color);
 } else {
-    $stmt = $conn->prepare("UPDATE recipes SET recipe_name=?, description=?, energy_kcal=?, protein_g=?, base_cost_per_serving=?, hex_color=? WHERE recipe_id=?");
-    $stmt->bind_param("ssiddss", $recipe_name, $description, $kcal, $protein, $cost, $hex_color, $recipe_id);
+    $stmt = $conn->prepare("UPDATE recipes SET recipe_name=?, category=?, description=?, energy_kcal=?, protein_g=?, base_cost_per_serving=?, hex_color=? WHERE recipe_id=?");
+    $stmt->bind_param("ssssidds", $recipe_name, $category, $description, $kcal, $protein, $cost, $hex_color, $recipe_id);
 }
 
 if ($stmt->execute()) {

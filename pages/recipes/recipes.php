@@ -11,7 +11,8 @@ $isAdmin = ($role === 'Admin');
         padding: 0.5rem 1.25rem; background: var(--surface); border: 1px solid var(--border);
         border-radius: 99px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s; color: var(--text-muted);
     }
-    .filter-pill.active { background: var(--primary); border-color: var(--primary); color: white; }
+    .filter-pill:hover { border-color: #94a3b8; color: var(--text-main); transform: translateY(-1px); }
+    .filter-pill.active { color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     
     .recipe-card {
         background: var(--surface); border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
@@ -84,6 +85,40 @@ $isAdmin = ($role === 'Admin');
         </div>
     </div>
 
+    <!-- Top Level Partitions -->
+    <div style="display:flex; gap:1rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border);">
+        <button id="tabCoreMeals" class="tab-btn active" onclick="switchPartition('Meals')">
+            <span class="material-icons" style="font-size:18px;">restaurant</span> Core Meals
+        </button>
+        <button id="tabSnacks" class="tab-btn" onclick="switchPartition('Snacks')">
+            <span class="material-icons" style="font-size:18px;">bakery_dining</span> Appended Snacks
+        </button>
+    </div>
+
+    <style>
+        .tab-btn {
+            background: none; border: none; padding: 0.75rem 1rem; font-size: 0.95rem; font-weight: 800;
+            color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 0.5rem;
+            margin-bottom: -2px; border-bottom: 2px solid transparent; transition: all 0.2s;
+        }
+        .tab-btn:hover { color: var(--text-main); }
+        .tab-btn.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+    </style>
+
+    <!-- Category Filter Pills -->
+    <div id="categoryPills" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem;">
+        <button class="filter-pill active" data-cat="All" style="--cat-color:#64748b" onclick="filterByCategory('All', this)">All</button>
+        <button class="filter-pill cat-meal" data-cat="Rice Meal" style="--cat-color:#f59e0b" onclick="filterByCategory('Rice Meal', this)">🍚 Rice</button>
+        <button class="filter-pill cat-meal" data-cat="Soup" style="--cat-color:#0ea5e9" onclick="filterByCategory('Soup', this)">🍲 Soup</button>
+        <button class="filter-pill cat-meal" data-cat="Viand" style="--cat-color:#ef4444" onclick="filterByCategory('Viand', this)">🍖 Viand</button>
+        <button class="filter-pill cat-meal" data-cat="Pasta" style="--cat-color:#f97316" onclick="filterByCategory('Pasta', this)">🍝 Pasta</button>
+        <button class="filter-pill cat-meal" data-cat="Vegetable" style="--cat-color:#10b981" onclick="filterByCategory('Vegetable', this)">🥦 Veg</button>
+        
+        <button class="filter-pill cat-snack" data-cat="Snack" style="--cat-color:#a855f7; display:none;" onclick="filterByCategory('Snack', this)">🥪 Snacks</button>
+        
+        <button class="filter-pill" data-cat="General" style="--cat-color:#64748b" onclick="filterByCategory('General', this)">📋 General</button>
+    </div>
+
     <!-- Recipe Grid -->
     <div id="recipeGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
         <!-- Cards will be injected here via JS -->
@@ -97,30 +132,23 @@ $isAdmin = ($role === 'Admin');
         <form id="recipeForm">
             <input type="hidden" name="action" id="recipeAction" value="add">
             <input type="hidden" name="recipe_id" id="form_recipe_id">
-            
-            <div style="display: grid; grid-template-columns: 1fr 120px; gap: 1.5rem; margin-bottom: 1.5rem;">
-                <div>
-                    <label style="display:block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Recipe Name</label>
-                    <input type="text" name="recipe_name" id="form_name" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 700;">
-                </div>
-                <div>
-                    <label style="display:block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Custom Color</label>
-                    <input type="color" name="hex_color" id="form_color" value="#3b82f6" style="width: 100%; height: 48px; padding: 4px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer;">
-                </div>
-            </div>
 
-            <div style="margin-bottom: 2rem;">
-                <label style="display:block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Quick Preset Palette</label>
-                <div class="swatch-grid">
-                    <?php 
-                    $presets = [
-                        '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b',
-                        '#0ea5e9', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777', '#475569'
-                    ];
-                    foreach($presets as $p): ?>
-                        <div class="swatch" style="background: <?= $p ?>" onclick="selectSwatch('<?= $p ?>', this)"></div>
-                    <?php endforeach; ?>
-                </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display:block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Category</label>
+                <select name="category" id="form_category" style="width:100%; padding:0.75rem; border:1px solid var(--border); border-radius:8px; font-weight:600; cursor:pointer;">
+                    <option value="General">📋 General</option>
+                    <option value="Rice Meal">🍚 Rice Meal</option>
+                    <option value="Soup">🍲 Soup</option>
+                    <option value="Viand">🍖 Viand</option>
+                    <option value="Pasta">🍝 Pasta</option>
+                    <option value="Snack">🥪 Snack</option>
+                    <option value="Vegetable">🥦 Vegetable</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display:block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Recipe Name</label>
+                <input type="text" name="recipe_name" id="form_name" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 700;">
             </div>
             
             <div style="margin-bottom: 1.5rem;">
@@ -238,9 +266,7 @@ $isAdmin = ($role === 'Admin');
 
 
     function selectSwatch(color, el) {
-        document.getElementById('form_color').value = color;
-        document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
-        el.classList.add('active');
+        // No-op: color now driven by category
     }
 
     async function loadRecipes() {
@@ -250,7 +276,8 @@ $isAdmin = ($role === 'Admin');
         try {
             const response = await fetch('api_get_recipes.php');
             allRecipes = await response.json();
-            renderRecipes(allRecipes);
+            // Re-apply active category filter after reload
+            applyFilters();
         } catch (error) { console.error(error); }
     }
 
@@ -320,7 +347,8 @@ $isAdmin = ($role === 'Admin');
 
     function viewRecipe(r) {
         currentViewingRecipe = r;
-        const color = r.hex_color || '#3b82f6';
+        const cat = r.category || 'General';
+        const color = (CATEGORY_COLORS[cat] || CATEGORY_COLORS['General']).bg;
         
         document.getElementById('modalTitle').innerText = r.recipe_name;
         document.getElementById('modalDesc').innerText = r.description || 'No description provided.';
@@ -337,7 +365,7 @@ $isAdmin = ($role === 'Admin');
         document.getElementById('modalIngredients').innerHTML = r.ingredients.map(i => `
             <li style="display:flex; justify-content:space-between; padding:0.6rem 0.8rem; background:white; border:1px solid #f1f5f9; border-radius:8px; font-size:0.85rem;">
                 <span style="font-weight:700;">${i.name}</span>
-                <span style="color:var(--primary); font-weight:800;">${i.amount} ${i.unit}</span>
+                <span style="color:${color}; font-weight:800;">${i.amount} ${i.unit}</span>
             </li>
         `).join('');
 
@@ -349,12 +377,14 @@ $isAdmin = ($role === 'Admin');
             </div>
         `).join('');
 
-        // Restrictions/Allergens
+        // Allergens + Category badge in header
+        const catColor = CATEGORY_COLORS[cat] || CATEGORY_COLORS['General'];
+        const catIcon = CATEGORY_ICONS[cat] || '📋';
         const badgesContainer = document.getElementById('modalBadges');
         const allergens = r.allergens ? r.allergens.split(',') : [];
-        badgesContainer.innerHTML = allergens.map(a => `
-            <span class="badge-allergen" style="background: #fee2e2; color: #b91c1c; font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700; text-transform: uppercase;">${a.trim()}</span>
-        `).join('');
+        badgesContainer.innerHTML =
+            `<span style="font-size:0.7rem; font-weight:800; background:${catColor.light}; color:${catColor.text}; padding:3px 10px; border-radius:20px; border:1px solid ${catColor.bg}33;">${catIcon} ${cat}</span>` +
+            allergens.map(a => `<span class="badge-allergen">${a.trim()}</span>`).join('');
 
         document.getElementById('recipeDetailModal').classList.add('active');
     }
@@ -368,11 +398,11 @@ $isAdmin = ($role === 'Admin');
         document.getElementById('recipeAction').value = 'edit';
         document.getElementById('form_recipe_id').value = r.recipe_id;
         document.getElementById('form_name').value = r.recipe_name;
+        document.getElementById('form_category').value = r.category || 'General';
         document.getElementById('form_desc').value = r.description;
         document.getElementById('form_kcal').value = r.energy_kcal;
         document.getElementById('form_protein').value = r.protein_g;
         document.getElementById('form_cost').value = r.base_cost_per_serving;
-        document.getElementById('form_color').value = r.hex_color;
 
         // Reset ingredients/instructions from view data
         document.getElementById('formIngredientsList').innerHTML = '';
@@ -392,13 +422,88 @@ $isAdmin = ($role === 'Admin');
     }
 
 
+    const CATEGORY_COLORS = {
+        'All':        { bg: '#64748b', light: '#f1f5f9', text: '#475569' },
+        'Rice Meal':  { bg: '#f59e0b', light: '#fef3c7', text: '#92400e' },
+        'Soup':       { bg: '#0ea5e9', light: '#e0f2fe', text: '#075985' },
+        'Viand':      { bg: '#ef4444', light: '#fee2e2', text: '#991b1b' },
+        'Pasta':      { bg: '#f97316', light: '#ffedd5', text: '#9a3412' },
+        'Snack':      { bg: '#a855f7', light: '#f3e8ff', text: '#6b21a8' },
+        'Vegetable':  { bg: '#10b981', light: '#d1fae5', text: '#065f46' },
+        'General':    { bg: '#64748b', light: '#f1f5f9', text: '#475569' },
+    };
+
+    const CATEGORY_ICONS = {
+        'Rice Meal': '🍚', 'Soup': '🍲', 'Viand': '🍖',
+        'Pasta': '🍝', 'Snack': '🥪', 'Vegetable': '🥦', 'General': '📋'
+    };
+
+    let activeCategory = 'All';
+    let currentPartition = 'Meals';
+
+    function switchPartition(part) {
+        currentPartition = part;
+        document.getElementById('tabCoreMeals').classList.toggle('active', part === 'Meals');
+        document.getElementById('tabSnacks').classList.toggle('active', part === 'Snacks');
+        
+        document.querySelectorAll('.cat-meal').forEach(el => el.style.display = part === 'Meals' ? 'block' : 'none');
+        document.querySelectorAll('.cat-snack').forEach(el => el.style.display = part === 'Snacks' ? 'block' : 'none');
+        
+        // Reset category to All on switch
+        document.querySelector('.filter-pill[data-cat="All"]').click();
+    }
+
+    function filterByCategory(cat, el) {
+        activeCategory = cat;
+        document.querySelectorAll('.filter-pill').forEach(p => {
+            p.classList.remove('active');
+            p.style.background = '';
+            p.style.color = '';
+        });
+        el.classList.add('active');
+        const c = (CATEGORY_COLORS[cat] || CATEGORY_COLORS['General']).bg;
+        el.style.background = c;
+        el.style.color = '#fff';
+        applyFilters();
+    }
+
+    function applyFilters() {
+        let qs = document.getElementById('recipeSearch').value.toLowerCase();
+        let filtered = allRecipes.filter(r => {
+            const cat = r.category || 'General';
+            // Partition barrier
+            if (currentPartition === 'Meals' && cat === 'Snack') return false;
+            if (currentPartition === 'Snacks' && cat !== 'Snack') return false;
+            
+            // Category check
+            if (activeCategory !== 'All' && cat !== activeCategory) return false;
+            
+            // Search string
+            if (qs && !r.recipe_name.toLowerCase().includes(qs) && !(r.description || '').toLowerCase().includes(qs)) return false;
+            return true;
+        });
+        renderRecipes(filtered);
+    }
+
     function renderRecipes(recipes) {
         const grid = document.getElementById('recipeGrid');
-        grid.innerHTML = recipes.map(r => `
+        if (recipes.length === 0) {
+            grid.innerHTML = '<div style="grid-column:1/-1; padding:4rem; text-align:center; color:var(--text-muted); font-weight:700;">No recipes found in this category.</div>';
+            return;
+        }
+        grid.innerHTML = recipes.map(r => {
+            const cat = r.category || 'General';
+            const catIcon = CATEGORY_ICONS[cat] || '📋';
+            const catColor = CATEGORY_COLORS[cat] || CATEGORY_COLORS['General'];
+            const color = catColor.bg;
+            return `
             <div class="recipe-card" onclick='viewRecipe(${JSON.stringify(r).replace(/'/g, "&apos;")})'>
-                <div style="height: 12px; background: ${r.hex_color || '#3b82f6'}; opacity:0.8;"></div>
+                <div style="height: 12px; background: ${color};"></div>
                 <div class="card-content">
-                    <h3 style="font-size:1.1rem; font-weight:900; margin:0 0 0.5rem 0; color:var(--text-main);">${r.recipe_name}</h3>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.4rem;">
+                        <h3 style="font-size:1.1rem; font-weight:900; margin:0; color:var(--text-main);">${r.recipe_name}</h3>
+                        <span style="font-size:0.65rem; font-weight:700; background:${catColor.light}; color:${catColor.text}; padding:2px 8px; border-radius:20px; white-space:nowrap; margin-left:0.5rem; border: 1px solid ${catColor.bg}22;">${catIcon} ${cat}</span>
+                    </div>
                     <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.5; margin-bottom:1rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${r.description}</p>
                     
                     <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1.5rem;">
@@ -407,7 +512,6 @@ $isAdmin = ($role === 'Admin');
                     </div>
 
                     <div style="margin-top:auto; display:flex; justify-content:space-between; align-items:flex-end;">
-
                         <div style="display:flex; gap:0.75rem; font-size:0.75rem; font-weight:800;">
                             <div><span style="display:block; color:var(--text-muted); font-size:0.6rem;">ENERGY</span>${r.energy_kcal}kcal</div>
                             <div><span style="display:block; color:var(--text-muted); font-size:0.6rem;">PROTEIN</span>${r.protein_g}g</div>
@@ -418,8 +522,8 @@ $isAdmin = ($role === 'Admin');
                         </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     }
 
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -447,6 +551,12 @@ $isAdmin = ($role === 'Admin');
 
     loadRecipes();
     loadRestrictions();
+
+    // Set initial "All" pill color
+    const initPill = document.querySelector('.filter-pill.active');
+    if (initPill) { initPill.style.background = '#64748b'; initPill.style.color = '#fff'; }
+
+    document.getElementById('recipeSearch').addEventListener('input', applyFilters);
 </script>
 
 <?php require_once '../../includes/footer.php'; ?>

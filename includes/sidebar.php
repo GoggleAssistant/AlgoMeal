@@ -3,7 +3,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 ?>
 <!-- Fixed Sidebar -->
 <aside class="sidebar">
-    <div class="sidebar-header">
+    <div class="sidebar-header" id="algo-logo" style="cursor: pointer;">
         <img src="../../assets/Algomeal.svg" alt="AlgoMeal Logo" class="brand-logo">
         <span class="sidebar-title"><strong>Algo</strong>Meal</span>
     </div>
@@ -66,4 +66,51 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         </a>
     </div>
 
+    <!-- Hidden Debug Sandbox -->
+    <div id="debugSandbox" class="nav-item" style="display:none; padding: 1rem; border-top: 1px dashed var(--error); background: #fef2f2; margin-top: auto;">
+        <div style="font-size: 0.7rem; font-weight: 800; color: #b91c1c; text-transform: uppercase; margin-bottom: 0.5rem;"><span class="material-icons" style="font-size: 14px; vertical-align: middle;">bug_report</span> Debug Sandbox</div>
+        <p style="font-size: 0.65rem; color: #991b1b; margin: 0 0 0.5rem 0; line-height: 1.2;">Debug logs now attach to optimization payloads.</p>
+        <button onclick="triggerDatabaseNuke()" style="width: 100%; border: none; background: #dc2626; color: white; border-radius: 4px; padding: 0.5rem; font-size: 0.75rem; font-weight: 700; cursor: pointer;">NUKE SYSTEM DATA</button>
+    </div>
+
 </aside>
+
+<script>
+    // Hidden Easter Egg Logic
+    let logoClicks = 0;
+    let logoClickTimer = null;
+    
+    document.getElementById('algo-logo').addEventListener('click', () => {
+        logoClicks++;
+        clearTimeout(logoClickTimer);
+        
+        if (logoClicks >= 5) {
+            logoClicks = 0;
+            window.debugMode = true;
+            document.getElementById('debugSandbox').style.display = 'block';
+            console.warn("ALGO-MEAL DEBUG SANDBOX UNLOCKED");
+        } else {
+            logoClickTimer = setTimeout(() => { logoClicks = 0; }, 2000);
+        }
+    });
+
+    async function triggerDatabaseNuke() {
+        if (!confirm("CRITICAL WARNING:\n\nYou are about to DELETE all students, recipes, and meal plans from the database. This action is IRREVERSIBLE.\n\nType 'CONFIRM' to proceed.") && false) return;
+        
+        const verification = prompt("Type 'NUKE' to absolutely confirm data destruction:");
+        if (verification === 'NUKE') {
+            try {
+                const res = await fetch('../../pages/management/api_nuke_database.php', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    alert("System completely purged.");
+                    window.location.reload();
+                } else {
+                    alert("Wipe failed: " + data.message);
+                }
+            } catch (e) {
+                alert("Critical network error during wipe.");
+            }
+        }
+    }
+</script>

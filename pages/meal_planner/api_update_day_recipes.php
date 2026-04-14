@@ -14,6 +14,7 @@ if (!$data || !isset($data['date']) || !isset($data['meal_a'])) {
 $date = $data['date'];
 $meal_a = $data['meal_a'];
 $meal_b = $data['meal_b'] ?? null;
+$snack = $data['snack'] ?? null;
 
 $conn->begin_transaction();
 try {
@@ -41,9 +42,9 @@ try {
     $rA = $recipes[$meal_a];
     $rB = $meal_b && isset($recipes[$meal_b]) ? $recipes[$meal_b] : null;
 
-    // 2. Get students
+    // 2. Get students and their prior milk/snack attendance to preserve them
     $q_students = "
-        SELECT s.student_id, GROUP_CONCAT(sam.restriction_id) as restriction_ids
+        SELECT s.student_id, GROUP_CONCAT(sam.restriction_id) as restriction_ids, m.with_milk, m.with_snack, m.feeding_status
         FROM meal_plan m
         JOIN student s ON m.student_id = s.student_id
         LEFT JOIN student_allergy_map sam ON s.student_id = sam.student_id
@@ -107,25 +108,25 @@ try {
     }
     
     // 3. Update DB
-    $stmt_u1 = $conn->prepare("UPDATE daily_meal_plans SET meal_a_recipe_id = ?, meal_b_recipe_id = ? WHERE scheduled_date = ?");
-    $stmt_u1->bind_param('sss', $meal_a, $meal_b, $date);
+    $stmt_u1 = $conn->prepare("UPDATE daily_meal_plans SET meal_a_recipe_id = ?, meal_b_recipe_id = ?, snack_recipe_id = ? WHERE scheduled_date = ?");
+    $stmt_u1->bind_param('ssss', $meal_a, $meal_b, $snack, $date);
     $stmt_u1->execute();
     
     $stmt_del = $conn->prepare("DELETE FROM meal_plan WHERE scheduled_date = ?");
     $stmt_del->bind_param('s', $date);
     $stmt_del->execute();
     
-    $insert_meal_plan = $conn->prepare("INSERT INTO meal_plan (student_id, recipe_id, scheduled_date, actual_cost) VALUES (?, ?, ?, ?)");
+    $insert_meal_plan = $conn->prepare("INSERT INTO meal_plan (student_id, recipe_id, scheduled_date, actual_cost, feeding_status, with_milk, with_snack) VALUES (?, ?, ?, ?, ?, ?, ?)");
     $cost_a = $rA['base_cost_per_serving'];
     foreach($final_a_list as $s) {
-        $insert_meal_plan->bind_param('sssd', $s['student_id'], $meal_a, $date, $cost_a);
+        $insert_meal_plan->bind_param('sssdsss', $s['student_id'], $meal_a, $date, $cost_a, $s['feeding_status'], $s['with_milk'], $s['with_snack']);
         $insert_meal_plan->execute();
     }
     
     if($rB) {
         $cost_b = $rB['base_cost_per_serving'];
         foreach($final_b_list as $s) {
-            $insert_meal_plan->bind_param('sssd', $s['student_id'], $meal_b, $date, $cost_b);
+            $insert_meal_plan->bind_param('sssdsss', $s['student_id'], $meal_b, $date, $cost_b, $s['feeding_status'], $s['with_milk'], $s['with_snack']);
             $insert_meal_plan->execute();
         }
     }

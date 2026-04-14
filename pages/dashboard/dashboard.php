@@ -69,10 +69,12 @@ foreach ($bmi_stats as $k => $v) {
 $today_meal_query = "
     SELECT dp.*, 
            rA.recipe_name as a_name, rA.hex_color as a_color, rA.energy_kcal as a_cal,
-           rB.recipe_name as b_name, rB.hex_color as b_color, rB.energy_kcal as b_cal
+           rB.recipe_name as b_name, rB.hex_color as b_color, rB.energy_kcal as b_cal,
+           rS.recipe_name as s_name, rS.hex_color as s_color, rS.energy_kcal as s_cal
     FROM daily_meal_plans dp
     LEFT JOIN recipes rA ON dp.meal_a_recipe_id = rA.recipe_id
     LEFT JOIN recipes rB ON dp.meal_b_recipe_id = rB.recipe_id
+    LEFT JOIN recipes rS ON dp.snack_recipe_id = rS.recipe_id
     WHERE dp.scheduled_date = '$today'
 ";
 $today_meal_res = $conn->query($today_meal_query);
@@ -190,7 +192,7 @@ $ledger_res = $conn->query("SELECT * FROM budget_logs ORDER BY created_at DESC L
 
     .meal-cards {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 1rem;
         flex-grow: 1;
     }
@@ -428,7 +430,20 @@ $ledger_res = $conn->query("SELECT * FROM budget_logs ORDER BY created_at DESC L
                             <span><span class="material-icons" style="font-size:12px;">bolt</span> <?= $today_meal['b_cal'] ?> kcal</span>
                         </div>
                     </div>
-                    <?php else: ?>
+                    <?php endif; ?>
+                    
+                    <?php if (isset($today_meal['snack_recipe_id']) && $today_meal['snack_recipe_id']): ?>
+                    <div class="compact-meal-card" style="border-left:5px solid #f59e0b; background:#fffbeb;">
+                        <div class="c-meal-label" style="color:#d97706;"><span class="material-icons" style="font-size:10px; vertical-align:middle;">bakery_dining</span> Appended Snack</div>
+                        <div class="c-meal-name" style="color:#78350f; font-size:1.0rem;"><?= $today_meal['s_name'] ?></div>
+                        <div class="c-meal-stats" style="border-color:#fde68a;">
+                            <span><span class="material-icons" style="font-size:12px;">groups</span> All Students</span>
+                            <span><span class="material-icons" style="font-size:12px;">bolt</span> <?= $today_meal['s_cal'] ?> kcal</span>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <?php if (!$today_meal['meal_b_recipe_id'] && !$today_meal['snack_recipe_id']): ?>
                     <div class="compact-meal-card" style="background:transparent; border:1px dashed var(--border); justify-content:center; align-items:center;">
                         <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">No Split Deployment Today</div>
                     </div>

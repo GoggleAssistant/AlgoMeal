@@ -27,6 +27,7 @@ fgetcsv($handle);
 $successCount = 0;
 $skippedCount = 0;
 $errors = [];
+$duplicates = [];
 $line = 1;
 
 while (($data = fgetcsv($handle, 1000, ",")) !== false) {
@@ -51,10 +52,29 @@ while (($data = fgetcsv($handle, 1000, ",")) !== false) {
     }
 
     // Check if exists
-    $stmt = $conn->prepare("SELECT student_id FROM student WHERE student_id = ?");
+    $stmt = $conn->prepare("SELECT student_id, first_name, last_name, grade_level, section FROM student WHERE student_id = ?");
     $stmt->bind_param("s", $lrn);
     $stmt->execute();
-    if ($stmt->get_result()->num_rows > 0) {
+    $res = $stmt->get_result();
+    if ($res->num_rows > 0) {
+        $old_data = $res->fetch_assoc();
+        $duplicates[] = [
+            'lrn' => $lrn,
+            'old' => [
+                'name' => trim($old_data['first_name'] . ' ' . $old_data['last_name']),
+                'grade' => $old_data['grade_level'] ?: 'Unassigned',
+                'section' => $old_data['section'] ?: 'Unassigned'
+            ],
+            'new' => [
+                'name' => trim($first . ' ' . $last),
+                'first_name' => $first,
+                'last_name' => $last,
+                'sex' => $sex,
+                'birth_date' => $birth,
+                'grade_level' => $grade,
+                'section' => $section
+            ]
+        ];
         $skippedCount++;
         continue;
     }
@@ -74,6 +94,7 @@ fclose($handle);
 
 echo json_encode([
     'success' => true, 
-    'message' => "Successfully imported $successCount students. Skipped $skippedCount existing records.",
-    'errors' => $errors
+    'message' => "Successfully imported $successCount students. Found $skippedCount existing records.",
+    'errors' => $errors,
+    'duplicates' => $duplicates
 ]);
