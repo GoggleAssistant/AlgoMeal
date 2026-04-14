@@ -83,8 +83,14 @@ while($c = $chart_res->fetch_assoc()) {
             </div>
         </div>
         <div style="display:flex; gap: 0.75rem;">
-            <button class="btn-m3 btn-m3-outline" onclick="window.history.back()"><span class="material-icons">arrow_back</span> Back to Roster</button>
-            <button class="btn-m3 btn-m3-primary" onclick="window.print()"><span class="material-icons">print</span> Print Profile</button>
+            <button class="btn-m3 btn-m3-outline" onclick="window.history.back()">
+                <span class="material-icons" style="font-size: 18px;">arrow_back</span>
+                <span>Back to Roster</span>
+            </button>
+            <button class="btn-m3 btn-m3-primary" onclick="window.print()">
+                <span class="material-icons" style="font-size: 18px;">print</span>
+                <span>Print Profile</span>
+            </button>
         </div>
     </div>
 

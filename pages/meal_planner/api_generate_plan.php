@@ -15,7 +15,7 @@ $date = $data['date'];
 
 // Get Budget limit
 $res_settings = $conn->query("SELECT setting_value FROM settings WHERE setting_key='total_daily_budget'");
-$budget_limit = $res_settings->num_rows > 0 ? (float)$res_settings->fetch_assoc()['setting_value'] : 500.00;
+$budget_limit = $res_settings->num_rows > 0 ? (float) $res_settings->fetch_assoc()['setting_value'] : 500.00;
 
 // Run Engine
 $plan_data = generate_plan_for_date($conn, $date, $budget_limit);
@@ -38,7 +38,7 @@ try {
 
     $meal_a = $plan_data['meal_a'];
     $meal_b = $plan_data['meal_b']; // Can be NULL
-    $snack  = $plan_data['snack'] ?? null; // Can be NULL
+    $snack = $plan_data['snack'] ?? null; // Can be NULL
 
     $stmt = $conn->prepare("INSERT INTO daily_meal_plans (scheduled_date, meal_a_recipe_id, meal_b_recipe_id, snack_recipe_id) VALUES (?, ?, ?, ?)");
     $stmt->bind_param('ssss', $date, $meal_a, $meal_b, $snack);
@@ -46,7 +46,7 @@ try {
 
     // Insert student assignments
     $insert_meal_plan = $conn->prepare("INSERT INTO meal_plan (student_id, recipe_id, scheduled_date, actual_cost, with_snack) VALUES (?, ?, ?, ?, ?)");
-    
+
     // We need cost of recipes
     $q_costs = "SELECT recipe_id, base_cost_per_serving FROM recipes WHERE recipe_id IN (?, ?)";
     $stmt_c = $conn->prepare($q_costs);
@@ -62,7 +62,7 @@ try {
 
     $cost_a = $costs[$meal_a] ?? 0;
     $blacklist = $plan_data['snack_blacklist'] ?? [];
-    
+
     foreach ($plan_data['meal_a_list'] as $s_id) {
         $snack_flag = in_array($s_id, $blacklist) ? 0 : 1;
         $insert_meal_plan->bind_param('sssdi', $s_id, $meal_a, $date, $cost_a, $snack_flag);
@@ -80,7 +80,7 @@ try {
 
     $conn->commit();
     echo json_encode([
-        'success' => true, 
+        'success' => true,
         'message' => "Plan generated successfully. Type: " . $plan_data['type'],
         'debug_data' => $plan_data['debug'] ?? []
     ]);

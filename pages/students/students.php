@@ -15,27 +15,27 @@ require_once '../../includes/topbar.php';
         const bdateVal = activeModal.querySelector('input[name="birth_date"]').value;
         const assessDateVal = activeModal.querySelector('input[name="assessment_date"]').value;
         if (!bdateVal) return;
-        
+
         const dob = new Date(bdateVal);
         const ref = assessDateVal ? new Date(assessDateVal) : new Date();
-        
+
         let years = ref.getFullYear() - dob.getFullYear();
         let months = ref.getMonth() - dob.getMonth();
         if (months < 0 || (months === 0 && ref.getDate() < dob.getDate())) {
             years--;
             months += 12;
         }
-        
+
         const ageDisplay = activeModal.querySelector('.calculated_age_display');
         const hiddenY = activeModal.querySelector('.hidden_age_y');
         const hiddenM = activeModal.querySelector('.hidden_age_m');
-        
+
         if (ageDisplay) ageDisplay.value = years + "Y / " + months + "M";
         if (hiddenY) hiddenY.value = years;
         if (hiddenM) hiddenM.value = months;
     }
 
-    document.addEventListener('change', function(e) {
+    document.addEventListener('change', function (e) {
         if (e.target.name === 'birth_date' || e.target.name === 'assessment_date') {
             updateAgeCalculation();
         }
@@ -176,31 +176,6 @@ require_once '../../includes/bmi_helper.php';
         display: flex;
         gap: 0.75rem;
     }
-
-    .btn-m3 {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 10px 20px;
-        border-radius: 100px;
-        font-weight: 700;
-        font-size: 0.85rem;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        border: none;
-        cursor: pointer;
-        box-shadow: var(--shadow-sm);
-        text-decoration: none;
-    }
-    .btn-m3:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
-    .btn-m3:active { transform: scale(0.98); }
-    .btn-m3-primary { background: var(--primary); color: white; }
-    .btn-m3-outline { background: white; color: var(--text-main); border: 1px solid var(--border); box-shadow: none; }
-    .btn-m3-outline:hover { background: #f8fafc; border-color: var(--primary); color: var(--primary); }
-    .btn-m3-tonal { background: #e0e7ff; color: #3730a3; box-shadow: none; }
-    .btn-m3-tonal:hover { background: #d1d5db; }
-    .btn-m3-danger { background: #fee2e2; color: #b91c1c; box-shadow: none; }
-    .btn-m3-danger:hover { background: #fecaca; }
 
     /* Section Tabs */
     .filter-label {
@@ -476,17 +451,44 @@ require_once '../../includes/bmi_helper.php';
     }
 
     .btn-icon {
-        background: none;
+        width: 32px;
+        height: 32px;
+        background: transparent;
         border: none;
         color: var(--text-muted);
         cursor: pointer;
-        padding: 0.25rem;
         border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
     }
 
     .btn-icon:hover {
-        background-color: var(--bg-color);
+        background-color: var(--secondary);
+        color: var(--primary);
+        transform: scale(1.1);
+    }
+
+    .btn-text {
+        background: transparent;
+        border: 1px solid var(--border);
         color: var(--text-main);
+        cursor: pointer;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-text:hover {
+        background: var(--bg-color);
+        border-color: var(--primary);
+        color: var(--primary);
     }
 
     /* Stacked Modal Management */
@@ -509,13 +511,16 @@ require_once '../../includes/bmi_helper.php';
             <p>Manage and monitor student nutritional progress per section.</p>
         </div>
         <div class="header-actions">
-            <a href="export_students.php?section=<?php echo urlencode($active_section); ?>" class="btn-m3 btn-m3-outline"><span
-                    class="material-icons" style="font-size: 16px;">file_download</span> Export List</a>
+            <a href="export_students.php?section=<?php echo urlencode($active_section); ?>"
+                class="btn-m3 btn-m3-outline"><span class="material-icons" style="font-size: 16px;">file_download</span>
+                Export List</a>
             <?php if ($role === 'Admin'): ?>
-                <button class="btn-m3 btn-m3-tonal" onclick="document.getElementById('importStudentModal').classList.add('active')">
+                <button class="btn-m3 btn-m3-tonal"
+                    onclick="document.getElementById('importStudentModal').classList.add('active')">
                     <span class="material-icons" style="font-size: 16px;">upload_file</span> Import CSV
                 </button>
-                <button class="btn-m3 btn-m3-primary" onclick="document.getElementById('addStudentModal').classList.add('active')">
+                <button class="btn-m3 btn-m3-primary"
+                    onclick="document.getElementById('addStudentModal').classList.add('active')">
                     <span class="material-icons" style="font-size: 16px;">add</span> Add Student
                 </button>
             <?php endif; ?>
@@ -683,11 +688,17 @@ require_once '../../includes/bmi_helper.php';
                                             <?php echo strtoupper(substr($st['first_name'], 0, 1)); ?>
                                         </div>
                                         <div class="student-info">
-                                            <a href="student_profile.php?id=<?php echo urlencode($st['student_id']); ?>" class="student-name-link"
+                                            <a href="student_profile.php?id=<?php echo urlencode($st['student_id']); ?>"
+                                                class="student-name-link"
                                                 style="text-decoration: none; color: var(--primary); font-weight: 800; display: inline-block;">
                                                 <?php echo htmlspecialchars($st['first_name'] . ' ' . $st['last_name']); ?>
                                             </a>
-                                            <style>.student-name-link:hover { text-decoration: underline !important; cursor: pointer; }</style>
+                                            <style>
+                                                .student-name-link:hover {
+                                                    text-decoration: underline !important;
+                                                    cursor: pointer;
+                                                }
+                                            </style>
                                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem;">
                                                 <?php echo $st['current_height'] ?: '--'; ?> cm •
                                                 <?php echo $st['current_weight'] ?: '--'; ?> kg
@@ -696,8 +707,10 @@ require_once '../../includes/bmi_helper.php';
                                     </div>
                                 </td>
                                 <td>
-                                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);"><?php echo htmlspecialchars($st['grade_level'] ?: 'Unassigned'); ?></div>
-                                    <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;"><?php echo htmlspecialchars($st['section'] ?: '--'); ?></div>
+                                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">
+                                        <?php echo htmlspecialchars($st['grade_level'] ?: 'Unassigned'); ?></div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
+                                        <?php echo htmlspecialchars($st['section'] ?: '--'); ?></div>
                                 </td>
                                 <td>
                                     <span
@@ -706,8 +719,9 @@ require_once '../../includes/bmi_helper.php';
                                     </span>
                                 </td>
                                 <td>
-                                    <span
-                                        class="bmi-value"><small style="font-weight:700; color:var(--text-muted); font-size: 0.65rem; text-transform:uppercase;">BMI: </small><?php echo $calculated_bmi ? number_format($calculated_bmi, 1) : '--'; ?></span>
+                                    <span class="bmi-value"><small
+                                            style="font-weight:700; color:var(--text-muted); font-size: 0.65rem; text-transform:uppercase;">BMI:
+                                        </small><?php echo $calculated_bmi ? number_format($calculated_bmi, 1) : '--'; ?></span>
                                     <?php if ($calculated_bmi): ?>
                                         <span class="<?php echo $bmiData['class']; ?>"
                                             style="font-size:0.65rem; padding: 0.15rem 0.5rem; margin-top:0.35rem; display:block; text-align:center; width: max-content; <?php echo $bmiData['style']; ?>"><?php echo $bmiData['label']; ?></span>
@@ -721,8 +735,8 @@ require_once '../../includes/bmi_helper.php';
                                     <span class="weight-gain <?php echo $diffClass; ?>"><?php echo $diffStr; ?></span>
                                 </td>
                                 <td>
-                                    <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                                        <button class="btn-text show-progress-btn"
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <button class="btn-m3 btn-m3-tonal show-progress-btn"
                                             data-min-target="<?php echo $st['min_target_weight']; ?>"
                                             data-max-target="<?php echo $st['max_target_weight']; ?>"
                                             data-name="<?php echo htmlspecialchars($st['first_name'] . ' ' . $st['last_name']); ?>"
@@ -741,16 +755,18 @@ require_once '../../includes/bmi_helper.php';
                                             data-participation="<?php echo $st['participation_consent']; ?>"
                                             data-4ps="<?php echo $st['is_4ps_beneficiary']; ?>"
                                             data-dewormed="<?php echo $st['deworming_status']; ?>"
-                                            style="font-size: 0.75rem; padding: 0.25rem 0.5rem; text-transform:none; border: 1px solid var(--border); border-radius:4px;">Show
-                                            Progress</button>
-                                        <button class="btn-text add-assessment-btn"
+                                            style="padding: 6px 12px; font-size: 0.75rem; border-radius: 12px;">
+                                            <span class="material-icons" style="font-size:14px;">visibility</span> View
+                                        </button>
+                                        <button class="btn-m3 btn-m3-outline add-assessment-btn"
                                             data-student_id="<?php echo htmlspecialchars($st['student_id']); ?>"
                                             data-height="<?php echo $st['current_height'] ?? ''; ?>"
                                             data-weight="<?php echo $st['current_weight'] ?? ''; ?>"
                                             data-min-target="<?php echo $st['min_target_weight']; ?>"
                                             data-max-target="<?php echo $st['max_target_weight']; ?>"
-                                            style="font-size: 0.75rem; padding: 0.25rem 0.5rem; text-transform:none; border: 1px solid var(--border); border-radius:4px; background:var(--bg-color);">Add
-                                            Assessment</button>
+                                            style="padding: 6px 12px; font-size: 0.75rem; border-radius: 12px; background:transparent;">
+                                            <span class="material-icons" style="font-size:14px;">fitness_center</span> Assess
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -784,13 +800,17 @@ require_once '../../includes/bmi_helper.php';
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Min Target (kg)</label>
-                    <input type="number" step="0.1" name="min_target_weight" id="assess_min_target_weight" placeholder="Min" readonly 
+                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Min
+                        Target (kg)</label>
+                    <input type="number" step="0.1" name="min_target_weight" id="assess_min_target_weight"
+                        placeholder="Min" readonly
                         style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; color: var(--text-muted); font-weight: 700;">
                 </div>
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Max Target (kg)</label>
-                    <input type="number" step="0.1" name="max_target_weight" id="assess_max_target_weight" placeholder="Max" readonly 
+                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Max
+                        Target (kg)</label>
+                    <input type="number" step="0.1" name="max_target_weight" id="assess_max_target_weight"
+                        placeholder="Max" readonly
                         style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; color: var(--text-muted); font-weight: 700;">
                 </div>
             </div>
@@ -904,15 +924,19 @@ require_once '../../includes/bmi_helper.php';
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Parent's Milk Consent</label>
-                    <select name="parent_milk_consent" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Parent's
+                        Milk Consent</label>
+                    <select name="parent_milk_consent"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                         <option value="0">No</option>
                         <option value="1">Yes</option>
                     </select>
                 </div>
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">4Ps Beneficiary</label>
-                    <select name="is_4ps" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">4Ps
+                        Beneficiary</label>
+                    <select name="is_4ps"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                         <option value="0">No</option>
                         <option value="1">Yes</option>
                     </select>
@@ -921,32 +945,45 @@ require_once '../../includes/bmi_helper.php';
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Dewormed?</label>
-                    <select name="is_dewormed" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    <label
+                        style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Dewormed?</label>
+                    <select name="is_dewormed"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                         <option value="0">No</option>
                         <option value="1">Yes</option>
                     </select>
                 </div>
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Participation Consent</label>
-                    <select name="participation_consent" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    <label
+                        style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Participation
+                        Consent</label>
+                    <select name="participation_consent"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                         <option value="0">No</option>
                         <option value="1">Yes</option>
                     </select>
                 </div>
             </div>
 
-            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px dashed var(--border);">
-                <h4 style="margin: 0 0 1rem 0; font-size: 0.85rem; font-weight: 800; color: var(--primary);">Initial Assessment Data</h4>
-                
+            <div
+                style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px dashed var(--border);">
+                <h4 style="margin: 0 0 1rem 0; font-size: 0.85rem; font-weight: 800; color: var(--primary);">Initial
+                    Assessment Data</h4>
+
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div>
-                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Assessment Date</label>
-                        <input type="date" name="assessment_date" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;" value="<?= date('Y-m-d') ?>">
+                        <label
+                            style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Assessment
+                            Date</label>
+                        <input type="date" name="assessment_date"
+                            style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;"
+                            value="<?= date('Y-m-d') ?>">
                     </div>
                     <div>
-                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Age (calculated)</label>
-                        <input type="text" readonly placeholder="Y / M" class="calculated_age_display" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background:#e2e8f0; font-weight:bold;">
+                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Age
+                            (calculated)</label>
+                        <input type="text" readonly placeholder="Y / M" class="calculated_age_display"
+                            style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background:#e2e8f0; font-weight:bold;">
                         <input type="hidden" name="age_years" class="hidden_age_y">
                         <input type="hidden" name="age_months" class="hidden_age_m">
                     </div>
@@ -954,19 +991,28 @@ require_once '../../includes/bmi_helper.php';
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div>
-                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Weight (kg)</label>
-                        <input type="number" step="0.01" name="init_weight" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                        <label
+                            style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Weight
+                            (kg)</label>
+                        <input type="number" step="0.01" name="init_weight"
+                            style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                     </div>
                     <div>
-                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Height (cm)</label>
-                        <input type="number" step="0.1" name="init_height" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                        <label
+                            style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Height
+                            (cm)</label>
+                        <input type="number" step="0.1" name="init_height"
+                            style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                     </div>
                 </div>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div>
-                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Nutritional Status (BMI-A)</label>
-                        <select name="ns_status" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                        <label
+                            style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Nutritional
+                            Status (BMI-A)</label>
+                        <select name="ns_status"
+                            style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                             <option value="Normal">Normal</option>
                             <option value="Wasted">Wasted</option>
                             <option value="Severely Wasted">Severely Wasted</option>
@@ -975,8 +1021,10 @@ require_once '../../includes/bmi_helper.php';
                         </select>
                     </div>
                     <div>
-                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">HFA Status</label>
-                        <select name="hfa_status" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">HFA
+                            Status</label>
+                        <select name="hfa_status"
+                            style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                             <option value="Normal">Normal</option>
                             <option value="Stunted">Stunted</option>
                             <option value="Severely Stunted">Severely Stunted</option>
@@ -987,12 +1035,16 @@ require_once '../../includes/bmi_helper.php';
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem;">
                     <div>
-                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Min Target (kg)</label>
-                        <input type="number" step="0.1" name="min_target_weight" id="min_target_weight_enroll" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; color: var(--text-muted); font-weight: 700;">
+                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Min
+                            Target (kg)</label>
+                        <input type="number" step="0.1" name="min_target_weight" id="min_target_weight_enroll" readonly
+                            style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; color: var(--text-muted); font-weight: 700;">
                     </div>
                     <div>
-                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Max Target (kg)</label>
-                        <input type="number" step="0.1" name="max_target_weight" id="max_target_weight_enroll" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; color: var(--text-muted); font-weight: 700;">
+                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Max
+                            Target (kg)</label>
+                        <input type="number" step="0.1" name="max_target_weight" id="max_target_weight_enroll" readonly
+                            style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; color: var(--text-muted); font-weight: 700;">
                     </div>
                 </div>
             </div>
@@ -1028,10 +1080,16 @@ require_once '../../includes/bmi_helper.php';
                     style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
             </div>
             <div style="margin-bottom: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
-                <label style="display:block; font-size: 0.75rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;">Calculated Target Weight</label>
+                <label
+                    style="display:block; font-size: 0.75rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;">Calculated
+                    Target Weight</label>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <input type="number" step="0.1" name="min_target_weight" id="assess_min_target_weight" placeholder="Min" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight:700;">
-                    <input type="number" step="0.1" name="max_target_weight" id="assess_max_target_weight" placeholder="Max" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight:700;">
+                    <input type="number" step="0.1" name="min_target_weight" id="assess_min_target_weight"
+                        placeholder="Min" readonly
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight:700;">
+                    <input type="number" step="0.1" name="max_target_weight" id="assess_max_target_weight"
+                        placeholder="Max" readonly
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight:700;">
                 </div>
             </div>
             <div style="margin-bottom: 1.5rem;">
@@ -1164,15 +1222,19 @@ require_once '../../includes/bmi_helper.php';
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Parent's Milk Consent</label>
-                    <select name="parent_milk_consent" id="edit_milk_consent" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Parent's
+                        Milk Consent</label>
+                    <select name="parent_milk_consent" id="edit_milk_consent"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                         <option value="0">No</option>
                         <option value="1">Yes</option>
                     </select>
                 </div>
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">4Ps Beneficiary</label>
-                    <select name="is_4ps" id="edit_is_4ps" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">4Ps
+                        Beneficiary</label>
+                    <select name="is_4ps" id="edit_is_4ps"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                         <option value="0">No</option>
                         <option value="1">Yes</option>
                     </select>
@@ -1181,15 +1243,20 @@ require_once '../../includes/bmi_helper.php';
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Dewormed?</label>
-                    <select name="is_dewormed" id="edit_is_dewormed" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    <label
+                        style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Dewormed?</label>
+                    <select name="is_dewormed" id="edit_is_dewormed"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                         <option value="0">No</option>
                         <option value="1">Yes</option>
                     </select>
                 </div>
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Participation Consent</label>
-                    <select name="participation_consent" id="edit_participation_consent" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    <label
+                        style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Participation
+                        Consent</label>
+                    <select name="participation_consent" id="edit_participation_consent"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                         <option value="0">No</option>
                         <option value="1">Yes</option>
                     </select>
@@ -1214,12 +1281,16 @@ require_once '../../includes/bmi_helper.php';
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Min Target Weight (kg)</label>
-                    <input type="number" step="0.1" name="min_target_weight" id="edit_min_target" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight:700;">
+                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Min
+                        Target Weight (kg)</label>
+                    <input type="number" step="0.1" name="min_target_weight" id="edit_min_target" readonly
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight:700;">
                 </div>
                 <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Max Target Weight (kg)</label>
-                    <input type="number" step="0.1" name="max_target_weight" id="edit_max_target" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight:700;">
+                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Max
+                        Target Weight (kg)</label>
+                    <input type="number" step="0.1" name="max_target_weight" id="edit_max_target" readonly
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight:700;">
                 </div>
             </div>
 
@@ -1246,29 +1317,39 @@ require_once '../../includes/bmi_helper.php';
 <div class="modal-overlay" id="importStudentModal">
     <div class="modal" style="max-width: 450px; width: 95%;">
         <h2 class="modal-title">Bulk Student Import</h2>
-        
+
         <form id="importForm">
-            <div id="csvDropZone" class="input-group" style="position:relative; overflow:hidden; margin-bottom: 1.5rem; background: #f8fafc; border: 2px dashed #94a3b8; border-radius: 8px; text-align: center; transition: all 0.2s ease;">
+            <div id="csvDropZone" class="input-group"
+                style="position:relative; overflow:hidden; margin-bottom: 1.5rem; background: #f8fafc; border: 2px dashed #94a3b8; border-radius: 8px; text-align: center; transition: all 0.2s ease;">
                 <div style="padding: 1.5rem; pointer-events:none;">
-                    <span class="material-icons" style="font-size: 32px; color: var(--primary); margin-bottom: 0.5rem;">upload_file</span>
-                    <label style="display:block; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Drag & Drop or Click to Browse</label>
-                    <div id="csvFileName" style="font-size: 0.75rem; color: var(--text-muted); font-weight:600; word-break: break-all;">No CSV portfolio selected yet.</div>
+                    <span class="material-icons"
+                        style="font-size: 32px; color: var(--primary); margin-bottom: 0.5rem;">upload_file</span>
+                    <label
+                        style="display:block; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Drag &
+                        Drop or Click to Browse</label>
+                    <div id="csvFileName"
+                        style="font-size: 0.75rem; color: var(--text-muted); font-weight:600; word-break: break-all;">No
+                        CSV portfolio selected yet.</div>
                 </div>
-                <input type="file" id="csvFileInput" name="csvFile" accept=".csv" required style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor: pointer;">
+                <input type="file" id="csvFileInput" name="csvFile" accept=".csv" required
+                    style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor: pointer;">
             </div>
-            
-            <div style="background: #f0f7ff; padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; border: 1px solid #cce3ff; display: flex; align-items: center; justify-content: space-between;">
+
+            <div
+                style="background: #f0f7ff; padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; border: 1px solid #cce3ff; display: flex; align-items: center; justify-content: space-between;">
                 <div style="font-size: 0.75rem; color: #004085; line-height: 1.4;">
-                    <span class="material-icons" style="font-size: 14px; vertical-align: middle;">info</span> 
+                    <span class="material-icons" style="font-size: 14px; vertical-align: middle;">info</span>
                     Need the format? Existing LRNs will be securely skipped.
                 </div>
-                <a href="api_download_template.php" style="font-size: 0.75rem; font-weight: 700; color: #0061ff; text-decoration: none; white-space: nowrap; padding-left: 0.5rem;">
+                <a href="api_download_template.php"
+                    style="font-size: 0.75rem; font-weight: 700; color: #0061ff; text-decoration: none; white-space: nowrap; padding-left: 0.5rem;">
                     Download Template
                 </a>
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn-m3 btn-m3-outline" onclick="document.getElementById('importStudentModal').classList.remove('active')">Cancel</button>
+                <button type="button" class="btn-m3 btn-m3-outline"
+                    onclick="document.getElementById('importStudentModal').classList.remove('active')">Cancel</button>
                 <button type="submit" class="btn-m3 btn-m3-primary" style="flex-grow: 1;">Start Processing</button>
             </div>
         </form>
@@ -1463,17 +1544,17 @@ require_once '../../includes/bmi_helper.php';
     }
 
     // Attach listeners to various height fields
-    document.addEventListener('input', function(e) {
+    document.addEventListener('input', function (e) {
         if (e.target.name === 'init_height' || e.target.id === 'init_height_enroll') {
-             const form = e.target.closest('form');
-             const min = form.querySelector('[name="min_target_weight"]');
-             const max = form.querySelector('[name="max_target_weight"]');
-             if (min && max) calculateTargetWeights(e.target.value, min, max);
+            const form = e.target.closest('form');
+            const min = form.querySelector('[name="min_target_weight"]');
+            const max = form.querySelector('[name="max_target_weight"]');
+            if (min && max) calculateTargetWeights(e.target.value, min, max);
         }
         if (e.target.name === 'height' && e.target.id === 'assess_height') {
-             const min = document.getElementById('assess_min_target_weight');
-             const max = document.getElementById('assess_max_target_weight');
-             if (min && max) calculateTargetWeights(e.target.value, min, max);
+            const min = document.getElementById('assess_min_target_weight');
+            const max = document.getElementById('assess_max_target_weight');
+            if (min && max) calculateTargetWeights(e.target.value, min, max);
         }
     });
 
@@ -1540,7 +1621,7 @@ require_once '../../includes/bmi_helper.php';
             // Parse dates to relative days
             const parseDate = (d) => new Date(d).getTime() / 1000;
             const firstX = parseDate(data[0].accurate_date);
-            
+
             for (let i = 0; i < n; i++) {
                 const x = (parseDate(data[i].accurate_date) - firstX) / (24 * 60 * 60);
                 const y = parseFloat(data[i].bmi);
@@ -1549,14 +1630,14 @@ require_once '../../includes/bmi_helper.php';
             }
             const m = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
             const b = (sumY - m * sumX) / n;
-            
-            const lastX = (parseDate(data[data.length-1].accurate_date) - firstX) / (24 * 60 * 60);
+
+            const lastX = (parseDate(data[data.length - 1].accurate_date) - firstX) / (24 * 60 * 60);
             return daysOut.map(d => {
                 const targetDay = lastX + d;
-                const date = new Date(data[data.length-1].accurate_date);
+                const date = new Date(data[data.length - 1].accurate_date);
                 date.setDate(date.getDate() + d);
                 return {
-                    label: "Predicted: " + date.toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+                    label: "Predicted: " + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
                     val: parseFloat((m * targetDay + b).toFixed(1))
                 };
             });
@@ -1566,7 +1647,7 @@ require_once '../../includes/bmi_helper.php';
         const bmiData = history.map(item => item.bmi);
         const predictions = predictNextPoints(history);
         const predictionLabels = predictions.map(p => p.label);
-        const predictionValues = [history[history.length-1].bmi, ...predictions.map(p => p.val)];
+        const predictionValues = [history[history.length - 1].bmi, ...predictions.map(p => p.val)];
         const fullLabels = [...labels, ...predictionLabels];
         const predictedDataset = Array(labels.length - 1).fill(null).concat(predictionValues);
         const minBMILine = fullLabels.map(() => 18.5);
@@ -1969,7 +2050,7 @@ require_once '../../includes/bmi_helper.php';
 
     if (fileInput) {
         fileInput.addEventListener('change', () => {
-            if(fileInput.files.length > 0) {
+            if (fileInput.files.length > 0) {
                 fileNameDisplay.innerText = "Selected: " + fileInput.files[0].name;
                 fileNameDisplay.style.color = "var(--primary)";
                 dropZone.style.borderColor = "var(--primary)";
@@ -1988,7 +2069,7 @@ require_once '../../includes/bmi_helper.php';
         });
         fileInput.addEventListener('dragleave', () => {
             dropZone.style.transform = "scale(1)";
-            if(!fileInput.files.length) {
+            if (!fileInput.files.length) {
                 dropZone.style.borderColor = "#94a3b8";
                 dropZone.style.background = "#f8fafc";
             }
@@ -1999,7 +2080,7 @@ require_once '../../includes/bmi_helper.php';
     }
 
     // Import Student Action
-    document.getElementById('importForm').addEventListener('submit', async function(e) {
+    document.getElementById('importForm').addEventListener('submit', async function (e) {
         e.preventDefault();
         const btn = this.querySelector('button[type="submit"]');
         btn.disabled = true;
@@ -2011,8 +2092,8 @@ require_once '../../includes/bmi_helper.php';
                 body: new FormData(this)
             });
             const data = await res.json();
-            if(data.success) {
-                if(data.duplicates && data.duplicates.length > 0) {
+            if (data.success) {
+                if (data.duplicates && data.duplicates.length > 0) {
                     let dupRows = data.duplicates.map(d => `
                         <div style="background:var(--bg-color); padding: 0.75rem; border-radius: 8px; margin-bottom:0.5rem; border:1px solid var(--border);">
                             <div style="font-weight:900; color:var(--text-main); font-family:monospace; margin-bottom:4px;">LRN: ${d.lrn}</div>
@@ -2022,9 +2103,9 @@ require_once '../../includes/bmi_helper.php';
                             </div>
                         </div>
                     `).join('');
-                    
+
                     document.getElementById('importStudentModal').classList.remove('active');
-                    
+
                     AlgoModal.show({
                         title: 'Notice: Existing LRNs Detected',
                         body: `
@@ -2045,12 +2126,12 @@ require_once '../../includes/bmi_helper.php';
                             const upRes = await fetch('api_update_bulk_students.php', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ students: data.duplicates.map(d => d.new).map((n, i) => ({...n, lrn: data.duplicates[i].lrn})) })
+                                body: JSON.stringify({ students: data.duplicates.map(d => d.new).map((n, i) => ({ ...n, lrn: data.duplicates[i].lrn })) })
                             });
                             const upData = await upRes.json();
                             alert(upData.message);
                             location.reload();
-                        } catch(err) {
+                        } catch (err) {
                             alert('Failed to update duplicate records.');
                             location.reload();
                         }
@@ -2062,7 +2143,7 @@ require_once '../../includes/bmi_helper.php';
             } else {
                 alert('Import Failed: ' + data.error);
             }
-        } catch(e) {
+        } catch (e) {
             alert('A system error occurred during extraction.');
         } finally {
             btn.disabled = false;

@@ -425,6 +425,260 @@ $role = 'Admin'; // Roles removed as per request
         .btn-confirm:hover {
             background-color: #c5221f;
         }
+
+        /* PREMIUM UI SYSTEM (GLOBAL) */
+        .btn-m3 {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 100px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .btn-m3:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-m3:active {
+            transform: scale(0.98);
+        }
+
+        .btn-m3-primary { background: var(--primary); color: white; }
+        .btn-m3-primary:hover { background: var(--primary-hover); }
+
+        .btn-m3-outline { 
+            background: white; 
+            color: var(--text-main); 
+            border: 1px solid var(--border); 
+            box-shadow: none; 
+        }
+        .btn-m3-outline:hover { 
+            background: #f8fafc; 
+            border-color: var(--primary); 
+            color: var(--primary); 
+        }
+
+        .btn-m3-tonal { 
+            background: var(--secondary); 
+            color: var(--primary); 
+            box-shadow: none; 
+        }
+        .btn-m3-tonal:hover { background: #d1e3ff; }
+
+        .btn-m3-danger { 
+            background: #fee2e2; 
+            color: #b91c1c; 
+            box-shadow: none; 
+        }
+        .btn-m3-danger:hover { background: #fecaca; }
+
+        .badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* CORE DASHBOARD COMPONENTS */
+        .mgmt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 2rem;
+        }
+
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .kpi-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .kpi-card::after {
+            content: 'Strategic Data';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 0.55rem;
+            font-weight: 800;
+            color: var(--primary);
+            opacity: 0.2;
+            text-transform: uppercase;
+        }
+
+        .kpi-card.warning::after {
+            color: var(--error);
+            content: 'Low';
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-value {
+            font-size: 1.75rem;
+            font-weight: 900;
+            color: var(--text-main);
+        }
+
+        .kpi-subtext {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid { grid-template-columns: 1fr; }
+            .kpi-row { grid-template-columns: 1fr; }
+        }
+
+        .dashboard-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        .card-header h3 {
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin: 0;
+            color: var(--text-main);
+        }
+
+        .logging-form {
+            background: #f8fafc;
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-field label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 0.4rem;
+        }
+
+        .form-field input, .form-field select {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .reports-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .reports-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .reports-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #f8fafc;
+            font-size: 0.825rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        /* GLOBAL PRINT MANAGEMENT */
+        @media print {
+            .sidebar, .topbar, .no-print, .modal-overlay, .mgmt-tabs, .tab-btn {
+                display: none !important;
+            }
+            .main-content {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                left: 0 !important;
+                position: static !important;
+            }
+            .content {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            body {
+                background: white !important;
+                overflow: visible !important;
+            }
+            .dashboard-card {
+                border: 1px solid #eee !important;
+                box-shadow: none !important;
+            }
+        }
     </style>
 </head>
 
