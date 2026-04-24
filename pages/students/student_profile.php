@@ -178,7 +178,15 @@ while($c = $chart_res->fetch_assoc()) {
 
             <!-- Growth Chart -->
             <div class="dashboard-card" style="padding: 1.5rem;">
-                <h3 style="margin: 0 0 1.5rem 0; font-size: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">Growth Analysis Line Graph</h3>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <h3 style="margin: 0 0 1.5rem 0; font-size: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; flex:1;">Growth Analysis Line Graph</h3>
+                    <div id="predictionInsight" style="display:none; text-align:right;">
+                        <span class="badge" style="background:#ecfdf5; color:#059669; font-weight:800; padding:6px 12px; border-radius:8px;">
+                            <span class="material-icons" style="font-size:14px; vertical-align:middle;">speed</span>
+                            <span id="recoveryTimeDisplay">Calculating recovery...</span>
+                        </span>
+                    </div>
+                </div>
                 <div style="height: 300px;">
                     <canvas id="growthChart"></canvas>
                 </div>
@@ -280,6 +288,48 @@ while($c = $chart_res->fetch_assoc()) {
         const predictions = predictNextPoints(rawData);
         const predictionLabels = predictions.map(p => p.label);
         const predictionValues = [<?= end($chart_bmis) ?: 0 ?>, ...predictions.map(p => p.val)];
+        
+        // --- RECOVERY ESTIMATION ---
+        (function calculateRecovery() {
+            if (rawData.length < 2) return;
+            
+            const n = rawData.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+            const firstX = rawData[0].x;
+            for (let i = 0; i < n; i++) {
+                const x = (rawData[i].x - firstX) / (24 * 60 * 60);
+                sumX += x; sumY += rawData[i].y;
+                sumXY += x * rawData[i].y; sumXX += x * x;
+            }
+            const m = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const b = (sumY - m * sumX) / n;
+            
+            const currentBMI = rawData[rawData.length-1].y;
+            let targetBMI = 0;
+            let verb = "";
+            
+            if (currentBMI < 18.5 && m > 0) {
+                targetBMI = 18.5;
+                verb = "Normal Coverage";
+            } else if (currentBMI > 24.9 && m < 0) {
+                targetBMI = 24.9;
+                verb = "Target Stability";
+            }
+
+            if (targetBMI > 0) {
+                const lastX = (rawData[rawData.length-1].x - firstX) / (24 * 60 * 60);
+                const targetX = (targetBMI - b) / m;
+                const daysLimit = Math.ceil(targetX - lastX);
+                
+                if (daysLimit > 0 && daysLimit < 730) { // Limit to 2 years projection
+                    const targetDate = new Date();
+                    targetDate.setDate(targetDate.getDate() + daysLimit);
+                    document.getElementById('predictionInsight').style.display = 'block';
+                    document.getElementById('recoveryTimeDisplay').innerText = `Est. ${daysLimit} days to reach ${verb} (${targetDate.toLocaleDateString()})`;
+                }
+            }
+        })();
+
         // Extend labels for prediction
         const fullLabels = [...labels, ...predictionLabels];
         const actualData = [...<?= json_encode($chart_bmis) ?>];

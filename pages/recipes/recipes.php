@@ -190,7 +190,11 @@ $isAdmin = ($role === 'Admin');
 
             <div style="margin-bottom: 2rem;">
                 <label style="display:block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Allergen Exclusions</label>
-                <div id="restrictionCheckboxes" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: var(--bg-color); padding: 1rem; border-radius: 12px;"></div>
+                <div id="restrictionCheckboxes" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: var(--bg-color); padding: 1rem; border-radius: 12px; margin-bottom:0.5rem;"></div>
+                <div style="display:flex; gap:0.5rem;">
+                    <input type="text" id="customRestrictionInput" placeholder="Add custom allergy..." style="flex:1; padding:0.4rem; border:1px solid var(--border); border-radius:6px; font-size:0.75rem;">
+                    <button type="button" class="btn-m3 btn-m3-outline" onclick="addCustomRestriction('customRestrictionInput')" style="padding:4px 12px; font-size:0.7rem;">+ Add</button>
+                </div>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">

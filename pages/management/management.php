@@ -309,17 +309,43 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
     <div id="tab-fiscal"
         class="tab-content <?= (!isset($_GET['tab']) || $_GET['tab'] == 'fiscal') && !isset($_GET['page_offset']) ? 'active' : '' ?>">
         <div class="kpi-row no-print">
-            <div class="kpi-card">
-                <div class="kpi-label">Strategic Allocation</div>
-                <div class="kpi-value">&#8369;<?= number_format($allocated_budget, 2) ?></div>
+            <div class="kpi-card" style="min-height: 140px;">
+                <div class="kpi-label" style="display:flex; justify-content:space-between; align-items:center;">
+                    Strategic Allocation
+                    <?php if ($isAdmin): ?>
+                    <button onclick="toggleBudgetEdit()" style="background:none; border:none; color:var(--primary); cursor:pointer;"><span class="material-icons" style="font-size:16px;">edit</span></button>
+                    <?php endif; ?>
+                </div>
+                <div id="budgetDisplay">
+                    <div class="kpi-value">&#8369;<?= number_format($allocated_budget, 2) ?></div>
+                    <div class="kpi-subtext">Base funding cap for the school year.</div>
+                </div>
+                <?php if ($isAdmin): ?>
+                <div id="budgetEdit" style="display:none; margin-top:0.5rem;">
+                    <div style="margin-bottom:0.5rem;">
+                        <label style="font-size:0.65rem; color:var(--text-muted); font-weight:700;">Total Allocation</label>
+                        <input type="number" id="setAllocBudget" value="<?= $allocated_budget ?>" style="width:100%; padding:0.4rem; border:1px solid var(--border); border-radius:6px; font-weight:700;">
+                    </div>
+                    <div style="margin-bottom:0.75rem;">
+                        <label style="font-size:0.65rem; color:var(--text-muted); font-weight:700;">Daily Budget Limit</label>
+                        <input type="number" id="setDailyLimit" value="<?= $daily_limit ?>" style="width:100%; padding:0.4rem; border:1px solid var(--border); border-radius:6px; font-weight:700;">
+                    </div>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button class="btn-m3 btn-m3-primary" onclick="saveBudgetSettings()" style="padding:4px 12px; font-size:0.7rem;"><span class="material-icons" style="font-size:14px;">save</span> Save</button>
+                        <button class="tab-btn" onclick="toggleBudgetEdit()" style="padding:4px 12px; font-size:0.7rem; border-radius:100px;">Cancel</button>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Cumulative Spend</div>
                 <div class="kpi-value" style="color:var(--primary);">&#8369;<?= number_format($total_spent, 2) ?></div>
+                <div class="kpi-subtext">Meal costs + Manual operational logs.</div>
             </div>
             <div class="kpi-card <?= $remaining_funds < 50000 ? 'warning' : '' ?>">
                 <div class="kpi-label">Liquidity Pool</div>
                 <div class="kpi-value">&#8369;<?= number_format($remaining_funds, 2) ?></div>
+                <div class="kpi-subtext">Daily Limit: &#8369;<?= number_format($daily_limit, 0) ?></div>
             </div>
         </div>
 
@@ -680,6 +706,37 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
 
 
 <script>
+    function toggleBudgetEdit() {
+        const d = document.getElementById('budgetDisplay');
+        const e = document.getElementById('budgetEdit');
+        if (d.style.display === 'none') {
+            d.style.display = 'block';
+            e.style.display = 'none';
+        } else {
+            d.style.display = 'none';
+            e.style.display = 'block';
+        }
+    }
+
+    async function saveBudgetSettings() {
+        const alloc = document.getElementById('setAllocBudget').value;
+        const daily = document.getElementById('setDailyLimit').value;
+        if (!alloc || !daily) return;
+        try {
+            const res = await fetch('api_save_settings.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    total_allocated_budget: alloc,
+                    total_daily_budget: daily
+                })
+            });
+            const data = await res.json();
+            if (data.success) location.reload();
+            else alert(data.message);
+        } catch (e) { alert('Failed to save settings.'); }
+    }
+
     // Allocation Chart
     document.addEventListener('DOMContentLoaded', () => {
         try {

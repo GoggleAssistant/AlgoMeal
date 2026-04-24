@@ -919,7 +919,11 @@ require_once '../../includes/bmi_helper.php';
                         </label>
                     <?php endforeach; ?>
                 </div>
-                <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.25rem;">Select all that apply.</p>
+                <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+                    <input type="text" id="customRestrictionInput" placeholder="Add custom allergy..." style="flex:1; padding:0.4rem; border:1px solid var(--border); border-radius:6px; font-size:0.75rem;">
+                    <button type="button" class="btn-m3 btn-m3-outline" onclick="addCustomRestriction('addStudentForm', 'customRestrictionInput')" style="padding:4px 12px; font-size:0.7rem;">+ Add</button>
+                </div>
+                <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.25rem;">Select all that apply or add a new one.</p>
             </div>
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
@@ -2150,6 +2154,74 @@ require_once '../../includes/bmi_helper.php';
             btn.innerText = 'Start Import';
         }
     });
+
+    // BMI Real-time Assistant
+    function updateNutritionalStatusRealtime(formSelector, hName, wName, targetName) {
+        const form = document.querySelector(formSelector);
+        if (!form) return;
+
+        const hIn = form.querySelector(`[name="${hName}"]`);
+        const wIn = form.querySelector(`[name="${wName}"]`);
+        const select = form.querySelector(`[name="${targetName}"]`);
+
+        if (!hIn || !wIn || !select) return;
+
+        const calculate = () => {
+            const h = parseFloat(hIn.value);
+            const w = parseFloat(wIn.value);
+            if (!h || !w || h <= 0) return;
+
+            const bmi = w / Math.pow(h / 100, 2);
+            let status = 'Normal';
+            if (bmi < 16) status = 'Severely Wasted';
+            else if (bmi < 18.5) status = 'Wasted';
+            else if (bmi >= 25 && bmi < 30) status = 'Overweight';
+            else if (bmi >= 30) status = 'Obese';
+
+            select.value = status;
+        };
+
+        hIn.addEventListener('input', calculate);
+        wIn.addEventListener('input', calculate);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // For Register Student Modal
+        updateNutritionalStatusRealtime('#addStudentForm', 'init_height', 'init_weight', 'ns_status');
+        // For New Assessment Modal
+        updateNutritionalStatusRealtime('#assessmentForm', 'height', 'weight', 'ns_status');
+        // For Edit Assessment Modal
+        updateNutritionalStatusRealtime('#editAssessmentForm', 'height', 'weight', 'ns_status');
+    });
+
+    async function addCustomRestriction(formId, inputId) {
+        const input = document.getElementById(inputId);
+        const name = input.value.trim();
+        if (!name) return;
+
+        try {
+            const res = await fetch('../management/api_add_restriction.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const data = await res.json();
+            if (data.success) {
+                const form = document.getElementById(formId);
+                const grid = form.querySelector('.allergy-grid') || form.querySelector('div[style*="flex-wrap: wrap"]');
+                
+                // Create new checkbox
+                const label = document.createElement('label');
+                label.style = "display:flex; align-items:center; gap: 0.25rem; font-size: 0.75rem; background: #fffbeb; padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid #f59e0b; cursor:pointer;";
+                label.innerHTML = `<input type="checkbox" name="allergies[]" value="${data.restriction_id}" checked> ${name}`;
+                
+                grid.appendChild(label);
+                input.value = '';
+            } else {
+                alert(data.message);
+            }
+        } catch (e) { alert('Failed to add restriction.'); }
+    }
 
 </script>
 
