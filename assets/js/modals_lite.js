@@ -39,21 +39,21 @@ const AlgoModal = {
             this.show({
                 title,
                 body: `<p style="font-size:0.9rem; color:var(--text-muted); line-height:1.5;">${text}</p>`,
-                footer: `<button class="btn" style="background:var(--primary); color:white; padding: 0.5rem 1.5rem;" id="liteBtnOk">OK</button>`
+                footer: `<button class="btn" id="liteBtnOk">OK</button>`
             });
             document.getElementById('liteBtnOk').onclick = () => { this.close(); resolve(); };
         });
     },
 
     confirm(title, text, type = 'primary') {
-        const btnColor = type === 'danger' ? 'var(--error)' : 'var(--primary)';
+        const btnClass = type === 'danger' ? 'btn btn-confirm' : 'btn';
         return new Promise(resolve => {
             this.show({
                 title,
                 body: `<p style="font-size:0.9rem; color:var(--text-muted); line-height:1.5;">${text}</p>`,
                 footer: `
                     <button class="btn btn-outline" id="liteBtnCancel">Cancel</button>
-                    <button class="btn" style="background:${btnColor}; color:white; padding: 0.5rem 1.5rem;" id="liteBtnConfirm">Confirm</button>
+                    <button class="${btnClass}" id="liteBtnConfirm">Confirm</button>
                 `
             });
             document.getElementById('liteBtnCancel').onclick = () => { this.close(); resolve(false); };

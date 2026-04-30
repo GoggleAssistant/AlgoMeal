@@ -42,6 +42,7 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
     .mgmt-tabs {
         display: flex;
         gap: 0.75rem;
+        margin-top: 1.5rem;
         margin-bottom: 2rem;
         padding-bottom: 1rem;
         border-bottom: 1px dashed var(--border);
@@ -65,7 +66,8 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
     }
 
     .tab-btn:hover {
-        background: #f1f5f9;
+        background: #f8fafc;
+        border-color: #cbd5e1;
         color: var(--text-main);
     }
 
@@ -73,7 +75,7 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
         background: var(--primary);
         color: white;
         border-color: var(--primary);
-        box-shadow: 0 4px 12px -2px rgba(59, 130, 246, 0.3);
+        box-shadow: 0 4px 12px rgba(0, 97, 255, 0.25);
     }
 
     .tab-content {
@@ -95,27 +97,6 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
             opacity: 1;
             transform: translateY(0);
         }
-    }
-
-    .tab-btn:hover {
-        background: #f8fafc;
-        border-color: #cbd5e1;
-        color: var(--text-main);
-    }
-
-    .tab-btn.active {
-        background: var(--primary);
-        color: white;
-        border-color: var(--primary);
-        box-shadow: 0 4px 12px rgba(0, 97, 255, 0.25);
-    }
-
-    .tab-content {
-        display: none;
-    }
-
-    .tab-content.active {
-        display: block;
     }
 
     .doc-grid {
@@ -368,7 +349,7 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
 
     <!-- TAB: DOCS -->
     <div id="tab-docs" class="tab-content <?= (!isset($_GET['tab']) || $_GET['tab'] == 'docs') ? 'active' : '' ?>">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;"
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;"
             class="no-print">
             <h3 style="margin:0;">Kitchen Photo Evidence</h3>
             <button class="btn-m3 btn-m3-primary" onclick="openUploadModal()"><span

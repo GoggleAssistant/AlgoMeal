@@ -1,4 +1,6 @@
 <?php
+date_default_timezone_set('Asia/Manila');
+
 $db_host = "localhost";
 $db_user = "root";
 $db_pass = "";

@@ -1,8 +1,12 @@
 /* App-Themed Lite Modals */
 .lite-modal-overlay {
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(26, 31, 54, 0.4); /* Slate with opacity */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(26, 31, 54, 0.4);
+    /* Slate with opacity */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -21,7 +25,7 @@
 .lite-modal-surface {
     background: white;
     border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     width: 90%;
     max-width: 500px;
     padding: 1.5rem;
@@ -54,15 +58,26 @@
     margin-bottom: 1.5rem;
 }
 
-.lite-modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border);
-}
 
 /* Modal Helper Classes */
-.input-group { margin-bottom: 1rem; }
-.input-group label { display: block; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-muted); text-transform: uppercase; }
-.input-group input, .input-group select { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; }
+.input-group {
+    margin-bottom: 1rem;
+}
+
+.input-group label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.input-group input,
+.input-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-weight: 600;
+}

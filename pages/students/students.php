@@ -54,24 +54,34 @@ while ($row = $section_result->fetch_assoc()) {
     $sections[] = $row;
 }
 
-// Determine active section (default to 'All' if not specified)
+// Determine active filters
 $active_section = $_GET['section'] ?? 'All';
-$active_grade_filter = $_GET['grade_filter'] ?? 'All';
-
-$active_grade = '';
-if ($active_section != 'All') {
-    foreach ($sections as $s) {
-        if ($s['section'] == $active_section)
-            $active_grade = $s['grade_level'];
-    }
-}
+$active_grade = $_GET['grade'] ?? 'All';
 
 // Total counts for the "All" view
 $total_students_enrolled = array_sum(array_column($sections, 'enrolled'));
 
 // Fetch students (For a specific section or ALL)
 $students = [];
-if ($active_section != '') {
+if (true) {
+    $where_clauses = [];
+    $params = [];
+    $types = "";
+
+    if ($active_section !== 'All') {
+        $where_clauses[] = "s.section = ?";
+        $params[] = $active_section;
+        $types .= "s";
+    }
+
+    if ($active_grade !== 'All') {
+        $where_clauses[] = "s.grade_level = ?";
+        $params[] = $active_grade;
+        $types .= "s";
+    }
+
+    $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
+
     $sql = "
         SELECT 
             s.student_id, 
@@ -98,13 +108,13 @@ if ($active_section != '') {
         FROM student s
         LEFT JOIN student_allergy_map sam ON s.student_id = sam.student_id
         LEFT JOIN dietary_restrictions dr ON sam.restriction_id = dr.restriction_id
-        " . ($active_section === 'All' ? "" : "WHERE s.section = ?") . "
+        $where_sql
         GROUP BY s.student_id
     ";
 
     $stmt = $conn->prepare($sql);
-    if ($active_section !== 'All') {
-        $stmt->bind_param("s", $active_section);
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
     }
     $stmt->execute();
     $result = $stmt->get_result();
@@ -188,6 +198,7 @@ require_once '../../includes/bmi_helper.php';
         text-transform: uppercase;
         color: var(--text-muted);
         font-weight: 500;
+        margin-top: 2rem;
         margin-bottom: 1rem;
         display: flex;
         justify-content: space-between;
@@ -367,7 +378,8 @@ require_once '../../includes/bmi_helper.php';
         padding: 1.25rem 1.5rem;
         border-top: 1px solid var(--border);
         vertical-align: top;
-        height: 100px; /* Enforce uniform row size */
+        height: 100px;
+        /* Enforce uniform row size */
     }
 
     /* Student Cell */
@@ -525,28 +537,39 @@ require_once '../../includes/bmi_helper.php';
     <div class="filter-label">
         <span><span class="material-icons"
                 style="font-size: 14px; vertical-align: middle; margin-right: 4px;">filter_alt</span> SELECT
-            SECTION</span>
-        <span>Showing <?php echo count($sections); ?> Sections</span>
+            GRADE</span>
     </div>
 
-    <?php
-    // Get unique grades for the filter bar
-    $unique_grades = array_unique(array_column($sections, 'grade_level'));
-    sort($unique_grades);
-    ?>
     <div class="grade-filter-container">
-        <button class="grade-filter-btn <?php echo ($active_grade_filter === 'All') ? 'active' : ''; ?>"
-            onclick="filterByGrade('All')">All</button>
-        <?php foreach ($unique_grades as $g): ?>
-            <button class="grade-filter-btn <?php echo ($active_grade_filter === $g) ? 'active' : ''; ?>"
-                onclick="filterByGrade('<?php echo htmlspecialchars($g); ?>')"><?php echo htmlspecialchars($g); ?></button>
+        <button class="grade-filter-btn <?php echo ($active_grade === 'All') ? 'active' : ''; ?>"
+            onclick="location.href='?grade=All&section=All'">All Grades</button>
+        <?php
+        $unique_grades = array_unique(array_column($sections, 'grade_level'));
+        sort($unique_grades);
+        foreach ($unique_grades as $g):
+            ?>
+            <button class="grade-filter-btn <?php echo ($active_grade === $g) ? 'active' : ''; ?>"
+                onclick="location.href='?grade=<?php echo urlencode($g); ?>&section=All'"><?php echo htmlspecialchars($g); ?></button>
         <?php endforeach; ?>
     </div>
 
+    <div class="filter-label" style="margin-top: 2rem;">
+        <span><span class="material-icons"
+                style="font-size: 14px; vertical-align: middle; margin-right: 4px;">groups</span> SELECT
+            SECTION</span>
+        <span>Showing
+            <?php echo ($active_grade === 'All') ? count($sections) : count(array_filter($sections, fn($s) => $s['grade_level'] === $active_grade)); ?>
+            Sections</span>
+    </div>
+
     <div class="section-cards" id="sectionCardsContainer">
-        <!-- Global "All Students" Card -->
-        <a href="?section=All&grade_filter=All"
-            class="section-tab <?php echo ($active_section === 'All') ? 'active' : ''; ?>" data-grade="All">
+        <!-- Global/Grade "All Students" Card -->
+        <?php
+        $all_card_count = ($active_grade === 'All') ? $total_students_enrolled : array_sum(array_map(fn($s) => ($s['grade_level'] === $active_grade) ? $s['enrolled'] : 0, $sections));
+        $all_card_label = ($active_grade === 'All') ? "Global School Overview" : "All " . $active_grade . " Students";
+        ?>
+        <a href="?section=All&grade=<?php echo urlencode($active_grade); ?>"
+            class="section-tab <?php echo ($active_section === 'All') ? 'active' : ''; ?>">
             <div class="tab-title">
                 <span style="<?php echo ($active_section === 'All') ? 'color: var(--primary);' : ''; ?>">All
                     Students</span>
@@ -554,26 +577,27 @@ require_once '../../includes/bmi_helper.php';
                     <span class="material-icons" style="color: var(--primary); font-size: 18px;">check_circle</span>
                 <?php endif; ?>
             </div>
-            <div class="tab-subtitle">Global School Overview</div>
+            <div class="tab-subtitle"><?php echo $all_card_label; ?></div>
             <div style="margin-top: 1rem;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">Total Enrollment</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Enrollment</span>
                     <span
-                        style="font-size: 0.875rem; font-weight: 700; color: var(--primary);"><?php echo $total_students_enrolled; ?></span>
+                        style="font-size: 0.875rem; font-weight: 700; color: var(--primary);"><?php echo $all_card_count; ?></span>
                 </div>
             </div>
         </a>
 
         <?php foreach ($sections as $s): ?>
             <?php
-            $isActive = ($s['section'] == $active_section);
-            // Calculate section progress (mock logic for now)
+            // Only show sections for the active grade, unless All is selected
+            if ($active_grade !== 'All' && $s['grade_level'] !== $active_grade)
+                continue;
+
+            $isActive = ($s['section'] == $active_section && $s['grade_level'] == $active_grade);
             $enrolled = $s['enrolled'];
-            $progress = $enrolled > 0 ? min(100, (6 / $enrolled) * 100) : 0;
             ?>
-            <a href="?section=<?php echo urlencode($s['section']); ?>&grade_filter=<?php echo urlencode($active_grade_filter); ?>"
-                class="section-tab <?php echo $isActive ? 'active' : ''; ?>"
-                data-grade="<?php echo htmlspecialchars($s['grade_level']); ?>">
+            <a href="?section=<?php echo urlencode($s['section']); ?>&grade=<?php echo urlencode($s['grade_level']); ?>"
+                class="section-tab <?php echo $isActive ? 'active' : ''; ?>">
                 <div class="tab-title">
                     <span
                         style="<?php echo $isActive ? 'color: var(--primary);' : ''; ?>"><?php echo htmlspecialchars($s['grade_level'] . ' - ' . $s['section']); ?></span>
@@ -597,7 +621,8 @@ require_once '../../includes/bmi_helper.php';
                 <input type="text" id="searchInput" oninput="filterTable()" placeholder="Search students, ID Number..."
                     style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; flex-grow: 1;">
 
-                <select id="bmiFilter" onchange="filterTable()" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                <select id="bmiFilter" onchange="filterTable()"
+                    style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                     <option value="">All BMI Status</option>
                     <option value="Normal">Normal</option>
                     <option value="Wasted">Wasted</option>
@@ -607,7 +632,8 @@ require_once '../../includes/bmi_helper.php';
                     <option value="Unknown">No Data</option>
                 </select>
 
-                <select id="enrollFilter" onchange="filterTable()" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                <select id="enrollFilter" onchange="filterTable()"
+                    style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
                     <option value="1">Enrolled Only</option>
                     <option value="0">Unenrolled Only</option>
                     <option value="">All Students</option>
@@ -670,11 +696,8 @@ require_once '../../includes/bmi_helper.php';
                             }
 
                             // Format restrictions and charts
-                            if ($st['latest_status']) {
-                                $bmiData = array_merge(['label' => $st['latest_status']], getStatusStyle($st['latest_status']));
-                            } else {
-                                $bmiData = categorizeBMI($calculated_bmi);
-                            }
+                            // Always re-categorize to match the current target standards (18.5 - 25.0)
+                            $bmiData = categorizeBMI($calculated_bmi);
                             $chartJSON = htmlspecialchars(json_encode($history_data[$st['student_id']] ?? []));
                             $allergens = $st['allergens'] ? $st['allergens'] : 'No Restrictions';
                             $isAllergic = $st['allergens'] != '';
@@ -729,7 +752,8 @@ require_once '../../includes/bmi_helper.php';
                                         <div style="margin-top: 0.5rem;">
                                             <span style="font-weight: 500;">Target Range:</span><br>
                                             <span style="color: var(--primary); font-weight: 600;">
-                                                <?php echo number_format($st['min_target_weight'], 1); ?> - <?php echo number_format($st['max_target_weight'], 1); ?> kg
+                                                <?php echo number_format($st['min_target_weight'], 1); ?> -
+                                                <?php echo number_format($st['max_target_weight'], 1); ?> kg
                                             </span>
                                         </div>
                                     <?php endif; ?>
@@ -744,16 +768,15 @@ require_once '../../includes/bmi_helper.php';
                                             style="padding: 6px 12px; font-size: 0.75rem; border-radius: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
                                             <span class="material-icons" style="font-size:14px;">visibility</span> View
                                         </a>
-                                        <button class="btn-m3 btn-m3-outline add-assessment-btn"
+                                        <button class="btn-m3 btn-m3-primary add-assessment-btn"
                                             data-student_id="<?php echo htmlspecialchars($st['student_id']); ?>"
                                             data-height="<?php echo $st['current_height'] ?? ''; ?>"
                                             data-weight="<?php echo $st['current_weight'] ?? ''; ?>"
                                             data-min-target="<?php echo $st['min_target_weight']; ?>"
                                             data-max-target="<?php echo $st['max_target_weight']; ?>"
-                                            data-sex="<?php echo $st['sex']; ?>"
-                                            data-birth="<?php echo $st['birth_date']; ?>"
-                                            style="padding: 6px 12px; font-size: 0.75rem; border-radius: 12px; background:transparent;">
-                                            <span class="material-icons" style="font-size:14px;">fitness_center</span> Assess
+                                            data-sex="<?php echo $st['sex']; ?>" data-birth="<?php echo $st['birth_date']; ?>"
+                                            style="padding: 8px 16px; font-size: 0.75rem; border-radius: 50px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0, 97, 255, 0.2);">
+                                            <span class="material-icons" style="font-size:16px;">add_circle</span> Assess
                                         </button>
                                     </div>
                                 </td>
@@ -768,54 +791,7 @@ require_once '../../includes/bmi_helper.php';
 
 
 
-<!-- Add Assessment Modal -->
-<div class="modal-overlay" id="addAssessmentModal">
-    <div class="modal" style="max-width: 400px; width: 95%;">
-        <h2 class="modal-title">New Nutritional Record</h2>
-        <form id="assessmentForm">
-            <input type="hidden" id="assessLrn" name="student_id">
-            <div style="margin-bottom: 1rem;">
-                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Height
-                    (cm)</label>
-                <input type="number" step="0.1" name="height" id="assess_height" required
-                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
-            </div>
-            <div style="margin-bottom: 1rem;">
-                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Weight
-                    (kg)</label>
-                <input type="number" step="0.1" name="weight" id="assess_weight" required
-                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
-            </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Min
-                        Target (kg)</label>
-                    <input type="number" step="0.1" name="min_target_weight" id="assess_min_target_weight"
-                        placeholder="Min" readonly
-                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; color: var(--text-muted); font-weight: 700;">
-                </div>
-                <div>
-                    <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Max
-                        Target (kg)</label>
-                    <input type="number" step="0.1" name="max_target_weight" id="assess_max_target_weight"
-                        placeholder="Max" readonly
-                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; color: var(--text-muted); font-weight: 700;">
-                </div>
-            </div>
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Assessment
-                    Date</label>
-                <input type="date" name="assessment_date" value="<?php echo date('Y-m-d'); ?>" required
-                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn-cancel"
-                    onclick="document.getElementById('addAssessmentModal').classList.remove('active')">Cancel</button>
-                <button type="submit" class="btn" style="background: var(--primary); color: white;">Save Record</button>
-            </div>
-        </form>
-    </div>
-</div>
+<!-- Legacy Modal Removed -->
 
 <!-- Add Student Modal -->
 <div class="modal-overlay" id="addStudentModal">
@@ -1004,12 +980,17 @@ require_once '../../includes/bmi_helper.php';
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div>
-                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Nutritional Status (BMI-A)</label>
-                        <input type="text" id="ns_status_enroll" name="ns_status" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight: 800;">
+                        <label
+                            style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">Nutritional
+                            Status (BMI-A)</label>
+                        <input type="text" id="ns_status_enroll" name="ns_status" readonly
+                            style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight: 800;">
                     </div>
                     <div>
-                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">HFA Status</label>
-                        <input type="text" id="hfa_status_enroll" name="hfa_status" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight: 800;">
+                        <label style="display:block; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.25rem;">HFA
+                            Status</label>
+                        <input type="text" id="hfa_status_enroll" name="hfa_status" readonly
+                            style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight: 800;">
                     </div>
                 </div>
 
@@ -1034,8 +1015,7 @@ require_once '../../includes/bmi_helper.php';
             <div class="modal-actions">
                 <button type="button" class="btn-cancel"
                     onclick="document.getElementById('addStudentModal').classList.remove('active')">Cancel</button>
-                <button type="submit" class="btn" style="background: var(--primary); color: white;">Register
-                    Student</button>
+                <button type="submit" class="btn">Register Student</button>
             </div>
         </form>
     </div>
@@ -1044,44 +1024,98 @@ require_once '../../includes/bmi_helper.php';
 <!-- Edit Assessment Modal -->
 <!-- Add Assessment Modal -->
 <div class="modal-overlay" id="addAssessmentModal">
-    <div class="modal" style="max-width: 400px; width: 95%;">
-        <h2 class="modal-title">New Nutritional Record</h2>
+    <div class="modal"
+        style="max-width: 500px; width: 95%; border-radius: 28px; padding: 2.5rem; border: none; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
+        <h2 class="modal-title"
+            style="font-weight: 900; font-size: 1.85rem; margin-bottom: 1.5rem; color: #1e293b; letter-spacing: -0.02em;">
+            New Nutritional Assessment</h2>
         <form id="assessmentForm">
             <input type="hidden" id="assessLrn" name="student_id">
             <input type="hidden" id="assess_birth_date" name="birth_date_hidden">
             <input type="hidden" id="assess_sex" name="sex_hidden">
-            <div style="margin-bottom: 1rem;">
-                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Height (cm)</label>
-                <input type="number" step="0.1" name="height" id="assess_height" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
-            </div>
-            <div style="margin-bottom: 1rem;">
-                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Weight (kg)</label>
-                <input type="number" step="0.1" name="weight" id="assess_weight" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
-            </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                <div>
-                    <label style="font-size: 0.75rem; font-weight: 500;">Nutritional Status</label>
-                    <input type="text" id="assess_ns_status" name="ns_status" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight: 800;">
-                </div>
-                <div>
-                    <label style="font-size: 0.75rem; font-weight: 500;">HFA Status</label>
-                    <input type="text" id="assess_hfa_status" name="hfa_status" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight: 800;">
-                </div>
-            </div>
-            <div style="margin-bottom: 1rem;">
-                <label style="display:block; font-size: 0.75rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;">Calculated Target Weight</label>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <input type="number" step="0.1" name="min_target_weight" id="assess_min_target_weight" placeholder="Min" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight:700;">
-                    <input type="number" step="0.1" name="max_target_weight" id="assess_max_target_weight" placeholder="Max" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight:700;">
-                </div>
-            </div>
+
             <div style="margin-bottom: 1.5rem;">
-                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Assessment Date</label>
-                <input type="date" name="assessment_date" value="<?php echo date('Y-m-d'); ?>" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                <label
+                    style="display:block; font-size: 0.75rem; font-weight: 800; color: #64748b; margin-bottom: 0.5rem; text-transform: none;">Assessment
+                    Date</label>
+                <div style="position: relative;">
+                    <input type="date" name="assessment_date" value="<?php echo date('Y-m-d'); ?>" required
+                        style="width: 100%; padding: 0.85rem 1.25rem; border: 1.5px solid #e2e8f0; border-radius: 16px; font-weight: 600; color: #334155; background: #fff;">
+                </div>
             </div>
-            <div class="modal-actions">
-                <button type="button" class="btn-cancel" onclick="document.getElementById('addAssessmentModal').classList.remove('active')">Cancel</button>
-                <button type="submit" class="btn" style="background: var(--primary); color: white;">Save Record</button>
+
+            <div id="assess_live_summary"
+                style="display:grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 0; margin-bottom: 2rem; background: #f0f9ff; padding: 1.25rem; border-radius: 20px; border: 1px solid #bae6fd;">
+                <div style="text-align: center;">
+                    <div
+                        style="font-size: 0.7rem; color: #0369a1; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">
+                        BMI</div>
+                    <div id="assess_live_bmi" style="font-size: 1.4rem; font-weight: 900; color: #0c4a6e;">--</div>
+                </div>
+                <div style="text-align: center; border-left: 1px solid #bae6fd; border-right: 1px solid #bae6fd;">
+                    <div
+                        style="font-size: 0.7rem; color: #0369a1; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">
+                        STATUS</div>
+                    <div id="assess_live_status" style="font-size: 0.85rem; font-weight: 900; color: #0c4a6e;">--</div>
+                </div>
+                <div style="text-align: center;">
+                    <div
+                        style="font-size: 0.7rem; color: #0369a1; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">
+                        HFA</div>
+                    <div id="assess_live_hfa" style="font-size: 0.85rem; font-weight: 900; color: #0c4a6e;">--</div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem;">
+                <div>
+                    <label
+                        style="display:block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem;">Height
+                        (cm)</label>
+                    <input type="number" step="0.1" name="height" id="assess_height" required
+                        style="width: 100%; padding: 0.85rem 1.25rem; border: 1.5px solid #e2e8f0; border-radius: 16px; font-weight: 700; color: #1e293b;">
+                </div>
+                <div>
+                    <label
+                        style="display:block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem;">Weight
+                        (kg)</label>
+                    <input type="number" step="0.1" name="weight" id="assess_weight" required
+                        style="width: 100%; padding: 0.85rem 1.25rem; border: 1.5px solid #e2e8f0; border-radius: 16px; font-weight: 700; color: #1e293b;">
+                </div>
+            </div>
+
+            <div style="display:none;">
+                <input type="text" id="assess_ns_status" name="ns_status">
+                <input type="text" id="assess_hfa_status" name="hfa_status">
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 2rem;">
+                <div>
+                    <label
+                        style="display:block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem;">Min
+                        Target (kg)</label>
+                    <input type="text" name="min_target_weight" id="assess_min_target_weight" readonly
+                        style="width: 100%; padding: 0.85rem 1.25rem; border: 1.5px solid #f1f5f9; border-radius: 16px; background: #f8fafc; font-weight: 800; color: #1e293b;">
+                </div>
+                <div>
+                    <label
+                        style="display:block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem;">Max
+                        Target (kg)</label>
+                    <input type="text" name="max_target_weight" id="assess_max_target_weight" readonly
+                        style="width: 100%; padding: 0.85rem 1.25rem; border: 1.5px solid #f1f5f9; border-radius: 16px; background: #f8fafc; font-weight: 800; color: #1e293b;">
+                </div>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #f1f5f9; margin-bottom: 2rem;">
+
+            <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" onclick="document.getElementById('addAssessmentModal').classList.remove('active')"
+                    style="padding: 0.9rem 2.25rem; border-radius: 50px; border: 1.5px solid #e2e8f0; background: white; color: #475569; font-weight: 800; cursor: pointer; transition: all 0.2s;">
+                    Cancel
+                </button>
+                <button type="submit"
+                    style="padding: 0.9rem 2.5rem; border-radius: 50px; border: none; background: #0061ff; color: white; font-weight: 800; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 97, 255, 0.3); transition: all 0.2s;">
+                    Save Assessment
+                </button>
             </div>
         </form>
     </div>
@@ -1089,47 +1123,95 @@ require_once '../../includes/bmi_helper.php';
 
 <!-- Edit Assessment Modal -->
 <div class="modal-overlay" id="editAssessmentModal">
-    <div class="modal" style="max-width: 400px; width: 95%;">
-        <h2 class="modal-title">Edit Nutritional Record</h2>
+    <div class="modal" style="max-width: 500px; width: 95%; border-radius: 24px; padding: 2rem;">
+        <h2 class="modal-title" style="font-weight: 900; font-size: 1.75rem; margin-bottom: 1.5rem; color: #1e293b;">
+            Edit Nutritional Assessment</h2>
         <form id="editAssessmentForm">
             <input type="hidden" id="editRecordId" name="record_id">
             <input type="hidden" id="edit_birth_date" name="birth_date_hidden">
             <input type="hidden" id="edit_sex" name="sex_hidden">
-            <div style="margin-bottom: 1rem;">
-                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Height (cm)</label>
-                <input type="number" step="0.1" id="editHeight" name="height" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
-            </div>
-            <div style="margin-bottom: 1rem;">
-                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Weight (kg)</label>
-                <input type="number" step="0.1" id="editWeight" name="weight" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
-            </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                <div>
-                    <label style="font-size: 0.75rem; font-weight: 500;">Nutritional Status</label>
-                    <input type="text" id="edit_ns_status" name="ns_status" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight: 800;">
+
+            <div id="edit_live_summary"
+                style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; margin-bottom: 1.5rem; background: #f0fdf4; padding: 1.25rem; border-radius: 16px; border: 1px solid #bbf7d0;">
+                <div style="text-align: center;">
+                    <div
+                        style="font-size: 0.7rem; color: #166534; font-weight: 800; text-transform: uppercase; letter-spacing: 0.025em; margin-bottom: 4px;">
+                        BMI</div>
+                    <div id="edit_live_bmi" style="font-size: 1.35rem; font-weight: 900; color: #14532d;">--</div>
                 </div>
-                <div>
-                    <label style="font-size: 0.75rem; font-weight: 500;">HFA Status</label>
-                    <input type="text" id="edit_hfa_status" name="hfa_status" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; font-weight: 800;">
+                <div style="text-align: center; border-left: 1px solid #bbf7d0; border-right: 1px solid #bbf7d0;">
+                    <div
+                        style="font-size: 0.7rem; color: #166534; font-weight: 800; text-transform: uppercase; letter-spacing: 0.025em; margin-bottom: 4px;">
+                        Status</div>
+                    <div id="edit_live_status" style="font-size: 0.85rem; font-weight: 900; color: #14532d;">--</div>
                 </div>
-            </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                <div>
-                    <label style="font-size: 0.75rem; font-weight: 500;">Min Target (kg)</label>
-                    <input type="number" step="0.1" name="min_target_weight" id="edit_assess_min_target" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; color: var(--text-muted); font-weight: 700;">
-                </div>
-                <div>
-                    <label style="font-size: 0.75rem; font-weight: 500;">Max Target (kg)</label>
-                    <input type="number" step="0.1" name="max_target_weight" id="edit_assess_max_target" readonly style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: #f1f5f9; color: var(--text-muted); font-weight: 700;">
+                <div style="text-align: center;">
+                    <div
+                        style="font-size: 0.7rem; color: #166534; font-weight: 800; text-transform: uppercase; letter-spacing: 0.025em; margin-bottom: 4px;">
+                        HFA</div>
+                    <div id="edit_live_hfa" style="font-size: 0.85rem; font-weight: 900; color: #14532d;">--</div>
                 </div>
             </div>
+
             <div style="margin-bottom: 1.5rem;">
-                <label style="display:block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Assessment Date</label>
-                <input type="date" id="editDate" name="assessment_date" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                <label
+                    style="display:block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem;">Assessment
+                    Date</label>
+                <input type="date" id="editDate" name="assessment_date" required
+                    style="width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 12px; font-weight: 600; color: #334155;">
             </div>
-            <div class="modal-actions">
-                <button type="button" class="btn-cancel" onclick="document.getElementById('editAssessmentModal').classList.remove('active')">Cancel</button>
-                <button type="submit" class="btn" style="background: var(--primary); color: white;">Update Record</button>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem;">
+                <div>
+                    <label
+                        style="display:block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem;">Height
+                        (cm)</label>
+                    <input type="number" step="0.1" id="editHeight" name="height" required
+                        style="width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 12px; font-weight: 700; color: #1e293b;">
+                </div>
+                <div>
+                    <label
+                        style="display:block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem;">Weight
+                        (kg)</label>
+                    <input type="number" step="0.1" id="editWeight" name="weight" required
+                        style="width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 12px; font-weight: 700; color: #1e293b;">
+                </div>
+            </div>
+
+            <div style="display:none;">
+                <input type="text" id="edit_ns_status" name="ns_status">
+                <input type="text" id="edit_hfa_status" name="hfa_status">
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 2rem;">
+                <div>
+                    <label
+                        style="display:block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem;">Min
+                        Target (kg)</label>
+                    <input type="text" name="min_target_weight" id="edit_assess_min_target" readonly
+                        style="width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #f1f5f9; border-radius: 12px; background: #f8fafc; font-weight: 800; color: #1e293b;">
+                </div>
+                <div>
+                    <label
+                        style="display:block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem;">Max
+                        Target (kg)</label>
+                    <input type="text" name="max_target_weight" id="edit_assess_max_target" readonly
+                        style="width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #f1f5f9; border-radius: 12px; background: #f8fafc; font-weight: 800; color: #1e293b;">
+                </div>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #f1f5f9; margin-bottom: 2rem;">
+
+            <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button"
+                    onclick="document.getElementById('editAssessmentModal').classList.remove('active')"
+                    style="padding: 0.8rem 2rem; border-radius: 50px; border: 1.5px solid #e2e8f0; background: white; color: #475569; font-weight: 800; cursor: pointer; transition: all 0.2s;">
+                    Cancel
+                </button>
+                <button type="submit"
+                    style="padding: 0.8rem 2.5rem; border-radius: 50px; border: none; background: #10b981; color: white; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); transition: all 0.2s;">
+                    Update Assessment
+                </button>
             </div>
         </form>
     </div>
@@ -1428,31 +1510,13 @@ require_once '../../includes/bmi_helper.php';
 </div>
 
 <script>
-    function filterSectionsByGrade(grade) {
-        // Update button states
-        document.querySelectorAll('.grade-filter-btn').forEach(btn => {
-            if (btn.innerText === grade) btn.classList.add('active');
-            else btn.classList.remove('active');
-        });
-
-        // Filter Cards
-        document.querySelectorAll('.section-tab').forEach(tab => {
-            const tabGrade = tab.getAttribute('data-grade');
-            if (grade === 'All' || tabGrade === grade || tabGrade === 'All') {
-                tab.style.display = '';
-
-                // Update the link to keep the grade filter persistent
-                let url = new URL(tab.href);
-                url.searchParams.set('grade_filter', grade);
-                tab.href = url.toString();
-            } else {
-                tab.style.display = 'none';
-            }
-        });
+    // No special grade JS needed, handled via URL parameters for stability
+    function filterByGrade(grade) {
+        location.href = `?grade=${encodeURIComponent(grade)}&section=All`;
     }
 
     // Map the HTML call to our function
-    window.filterByGrade = filterSectionsByGrade;
+    window.filterByGrade = filterByGrade;
 
     // Persist filter on load
     window.addEventListener('load', () => {
@@ -1517,7 +1581,7 @@ require_once '../../includes/bmi_helper.php';
         document.getElementById('editHeight').value = h;
         document.getElementById('editWeight').value = w;
         document.getElementById('editDate').value = d;
-        
+
         // Use global currentStudentData which is set when show-progress-btn is clicked
         if (currentStudentData) {
             document.getElementById('edit_birth_date').value = currentStudentData.birth;
@@ -1544,32 +1608,9 @@ require_once '../../includes/bmi_helper.php';
         document.getElementById('chartModal').classList.remove('active');
     }
 
-    function calculateTargetWeights(height, minEl, maxEl) {
-        if (!height || height <= 0) {
-            minEl.value = '';
-            maxEl.value = '';
-            return;
-        }
-        const min = 18.5 * Math.pow(height / 100, 2);
-        const max = 24.9 * Math.pow(height / 100, 2);
-        minEl.value = min.toFixed(1);
-        maxEl.value = max.toFixed(1);
+    function closeChartModal() {
+        document.getElementById('chartModal').classList.remove('active');
     }
-
-    // Attach listeners to various height fields
-    document.addEventListener('input', function (e) {
-        if (e.target.name === 'init_height' || e.target.id === 'init_height_enroll') {
-            const form = e.target.closest('form');
-            const min = form.querySelector('[name="min_target_weight"]');
-            const max = form.querySelector('[name="max_target_weight"]');
-            if (min && max) calculateTargetWeights(e.target.value, min, max);
-        }
-        if (e.target.name === 'height' && e.target.id === 'assess_height') {
-            const min = document.getElementById('assess_min_target_weight');
-            const max = document.getElementById('assess_max_target_weight');
-            if (min && max) calculateTargetWeights(e.target.value, min, max);
-        }
-    });
 
     // Background DOM refresh strategy for SPA-like feel
     let globalHistory = [];
@@ -1851,7 +1892,7 @@ require_once '../../includes/bmi_helper.php';
             document.getElementById('assess_birth_date').value = addBtn.getAttribute('data-birth');
             document.getElementById('assess_sex').value = addBtn.getAttribute('data-sex');
             document.getElementById('addAssessmentModal').classList.add('active');
-            
+
             // Trigger calculation
             if (window.nutritionEngine) {
                 window.nutritionEngine.attach('#assessmentForm', 'height', 'weight', 'assess_ns_status', 'assess_hfa_status', 'assess_min_target_weight', 'assess_max_target_weight', 'birth_date_hidden', 'sex_hidden');
@@ -2177,10 +2218,10 @@ require_once '../../includes/bmi_helper.php';
      * Handles real-time calculation of BMI-A and HFA statuses.
      */
     const NutritionEngine = {
-        bmi_boys: { 5:[15.3,12.1,13.0,14.1,16.6,18.3], 6:[15.3,12.1,13.0,14.1,16.8,18.5], 7:[15.4,12.1,13.1,14.1,17.0,19.0], 8:[15.5,12.2,13.2,14.3,17.4,19.7], 9:[15.8,12.3,13.4,14.5,17.9,20.5], 10:[16.2,12.4,13.6,14.8,18.5,21.4], 11:[16.6,12.7,13.9,15.2,19.2,22.5], 12:[17.1,13.0,14.3,15.6,20.0,23.6], 13:[17.7,13.4,14.8,16.2,20.8,24.8] },
-        bmi_girls: { 5:[15.2,11.8,12.7,13.9,16.9,18.9], 6:[15.2,11.7,12.7,13.8,17.0,19.2], 7:[15.3,11.8,12.7,14.0,17.3,19.8], 8:[15.6,11.9,12.9,14.2,17.7,20.6], 9:[15.9,12.1,13.1,14.4,18.3,21.5], 10:[16.4,12.4,13.5,14.8,19.0,22.6], 11:[17.0,12.7,13.9,15.3,19.9,23.7], 12:[17.6,13.2,14.4,15.9,20.8,25.0], 13:[18.2,13.6,15.0,16.5,21.8,26.2] },
-        hfa_boys: { 5:[110,98.7,102.5,117.5], 6:[116,103.8,107.9,124.2], 7:[121.7,108.6,113,130.4], 8:[127.3,113.3,118,136.6], 9:[132.6,117.8,122.8,142.5], 10:[137.8,122.2,127.4,148.4], 11:[143.1,126.8,132.2,154.5], 12:[149.1,131.8,137.6,161.4], 13:[156,137.6,143.7,169.3] },
-        hfa_girls: { 5:[109.4,98.4,102.1,116.7], 6:[115.1,103.2,107.2,123], 7:[120.8,108,112.2,129.5], 8:[126.4,112.8,117.3,135.9], 9:[132.2,117.9,122.6,142.5], 10:[138.6,123.5,128.5,150.1], 11:[145,129.4,134.6,157.8], 12:[151.2,135.2,140.6,164.7], 13:[156.4,140.3,145.7,170] },
+        bmi_boys: { 5: [15.3, 12.1, 13.0, 14.1, 16.6, 18.3], 6: [15.3, 12.1, 13.0, 14.1, 16.8, 18.5], 7: [15.4, 12.1, 13.1, 14.1, 17.0, 19.0], 8: [15.5, 12.2, 13.2, 14.3, 17.4, 19.7], 9: [15.8, 12.3, 13.4, 14.5, 17.9, 20.5], 10: [16.2, 12.4, 13.6, 14.8, 18.5, 21.4], 11: [16.6, 12.7, 13.9, 15.2, 19.2, 22.5], 12: [17.1, 13.0, 14.3, 15.6, 20.0, 23.6], 13: [17.7, 13.4, 14.8, 16.2, 20.8, 24.8] },
+        bmi_girls: { 5: [15.2, 11.8, 12.7, 13.9, 16.9, 18.9], 6: [15.2, 11.7, 12.7, 13.8, 17.0, 19.2], 7: [15.3, 11.8, 12.7, 14.0, 17.3, 19.8], 8: [15.6, 11.9, 12.9, 14.2, 17.7, 20.6], 9: [15.9, 12.1, 13.1, 14.4, 18.3, 21.5], 10: [16.4, 12.4, 13.5, 14.8, 19.0, 22.6], 11: [17.0, 12.7, 13.9, 15.3, 19.9, 23.7], 12: [17.6, 13.2, 14.4, 15.9, 20.8, 25.0], 13: [18.2, 13.6, 15.0, 16.5, 21.8, 26.2] },
+        hfa_boys: { 5: [110, 98.7, 102.5, 117.5], 6: [116, 103.8, 107.9, 124.2], 7: [121.7, 108.6, 113, 130.4], 8: [127.3, 113.3, 118, 136.6], 9: [132.6, 117.8, 122.8, 142.5], 10: [137.8, 122.2, 127.4, 148.4], 11: [143.1, 126.8, 132.2, 154.5], 12: [149.1, 131.8, 137.6, 161.4], 13: [156, 137.6, 143.7, 169.3] },
+        hfa_girls: { 5: [109.4, 98.4, 102.1, 116.7], 6: [115.1, 103.2, 107.2, 123], 7: [120.8, 108, 112.2, 129.5], 8: [126.4, 112.8, 117.3, 135.9], 9: [132.2, 117.9, 122.6, 142.5], 10: [138.6, 123.5, 128.5, 150.1], 11: [145, 129.4, 134.6, 157.8], 12: [151.2, 135.2, 140.6, 164.7], 13: [156.4, 140.3, 145.7, 170] },
 
         calculate: (height, weight, birthDate, sex, assessDate) => {
             if (!height || !weight || !birthDate || isNaN(new Date(birthDate))) return null;
@@ -2188,22 +2229,21 @@ require_once '../../includes/bmi_helper.php';
             const bmi = weight / (h_m * h_m);
             const dob = new Date(birthDate);
             const ref = assessDate ? new Date(assessDate) : new Date();
-            
+
             let age = ref.getFullYear() - dob.getFullYear();
             let mDiff = ref.getMonth() - dob.getMonth();
             if (mDiff < 0 || (mDiff === 0 && ref.getDate() < dob.getDate())) age--;
-            
+
             const lookupAge = Math.max(5, Math.min(13, age));
-            
+
             const bmiTable = (sex?.toLowerCase() === 'female') ? NutritionEngine.bmi_girls : NutritionEngine.bmi_boys;
             const hfaTable = (sex?.toLowerCase() === 'female') ? NutritionEngine.hfa_girls : NutritionEngine.hfa_boys;
-            
-            const bRef = bmiTable[lookupAge];
+
             let ns = 'Normal';
-            if (bmi < bRef[1]) ns = 'Severely Wasted';
-            else if (bmi < bRef[2]) ns = 'Wasted';
-            else if (bmi > bRef[5]) ns = 'Obese';
-            else if (bmi > bRef[4]) ns = 'Overweight';
+            if (bmi < 16.0) ns = 'Severely Wasted';
+            else if (bmi < 18.5) ns = 'Wasted';
+            else if (bmi >= 30.0) ns = 'Obese';
+            else if (bmi >= 25.0) ns = 'Overweight';
 
             const hRef = hfaTable[lookupAge];
             let hfa = 'Normal';
@@ -2211,7 +2251,10 @@ require_once '../../includes/bmi_helper.php';
             else if (height < hRef[2]) hfa = 'Stunted';
             else if (height > hRef[3]) hfa = 'Tall';
 
-            return { bmi: bmi.toFixed(1), ns, hfa, min: (18.5 * h_m * h_m).toFixed(1), max: (24.9 * h_m * h_m).toFixed(1) };
+            const minBMI = 18.5; // Reverted to user preference
+            const maxBMI = 24.9;
+
+            return { bmi: bmi.toFixed(1), ns, hfa, min: (minBMI * h_m * h_m).toFixed(1), max: (maxBMI * h_m * h_m).toFixed(1) };
         },
 
         attach: (formId, hName, wName, nsId, hfaId, minId, maxId, bName, sName, aName = 'assessment_date') => {
@@ -2227,11 +2270,6 @@ require_once '../../includes/bmi_helper.php';
                 if (!hIn.value || !wIn.value || !bIn.value) {
                     if (nsOut) nsOut.value = 'Fill Birth Date';
                     if (hfaOut) hfaOut.value = 'Fill Birth Date';
-                    if (hIn.value) {
-                        const h_m = parseFloat(hIn.value) / 100;
-                        if (minOut) minOut.value = (18.5 * h_m * h_m).toFixed(1);
-                        if (maxOut) maxOut.value = (24.9 * h_m * h_m).toFixed(1);
-                    }
                     return;
                 }
                 const res = NutritionEngine.calculate(parseFloat(hIn.value), parseFloat(wIn.value), bIn.value, sIn.value, aIn?.value);
@@ -2240,6 +2278,14 @@ require_once '../../includes/bmi_helper.php';
                     if (hfaOut) hfaOut.value = res.hfa;
                     if (minOut) minOut.value = res.min;
                     if (maxOut) maxOut.value = res.max;
+
+                    // Update Live Summaries if they exist
+                    const liveBmi = form.querySelector('[id*="live_bmi"]');
+                    const liveStatus = form.querySelector('[id*="live_status"]');
+                    const liveHfa = form.querySelector('[id*="live_hfa"]');
+                    if (liveBmi) liveBmi.innerText = res.bmi;
+                    if (liveStatus) liveStatus.innerText = res.ns;
+                    if (liveHfa) liveHfa.innerText = res.hfa;
                 }
             };
             hIn.addEventListener('input', update); wIn.addEventListener('input', update);

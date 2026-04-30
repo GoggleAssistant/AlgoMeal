@@ -25,15 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $is_4ps = (int) ($_POST['is_4ps'] ?? 0);
     $is_dewormed = (int) ($_POST['is_dewormed'] ?? 0);
 
-    // TARGET WEIGHTS - Auto-calculated from initial height if available
-    $init_height = (float) ($_POST['init_height'] ?? 0);
+    // TARGET WEIGHTS - Derived from WHO pediatric standards passed from frontend
     $min_target_weight = (float) ($_POST['min_target_weight'] ?? 0);
     $max_target_weight = (float) ($_POST['max_target_weight'] ?? 0);
-
-    if ($init_height > 0) {
-        $min_target_weight = 18.5 * pow($init_height / 100, 2);
-        $max_target_weight = 24.9 * pow($init_height / 100, 2);
-    }
 
     // Use manual section if provided
     if (trim($section) === 'Other' && !empty($manual_section)) {

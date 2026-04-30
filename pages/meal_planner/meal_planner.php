@@ -37,12 +37,13 @@ $recipes_json = json_encode($recipes);
     }
 
     .workspace-header {
-        padding: 1.25rem 2rem;
+        padding: 1.75rem 2.5rem;
         border-bottom: 1px solid var(--border);
         display: flex;
         justify-content: space-between;
         align-items: center;
         background: #fdfdfd;
+        margin-bottom: 1rem;
     }
 
     /* M3 Pill Buttons */
@@ -344,7 +345,28 @@ $recipes_json = json_encode($recipes);
 
 <div class="content">
     <div class="planner-grid">
-
+        <!-- Fiscal Bar -->
+        <div id="budgetBar" style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm);">
+            <div>
+                <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Fiscal Control</div>
+                <div style="font-size: 1.5rem; font-weight: 900; color: var(--text-main);"><span class="budget-spent-val">--</span> <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-muted);">Spent</span></div>
+                <div style="font-size: 0.8rem; font-weight: 700; color: #f59e0b; margin-top: 2px;"><span class="budget-predicted-val">--</span> Predicted</div>
+            </div>
+            <div style="flex: 1; margin: 0 2rem;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">
+                    <span>Utilization</span>
+                    <span class="budget-pct-badge" style="padding: 2px 8px; border-radius: 100px; font-size: 0.7rem; font-weight: 800; background: #e0e7ff; color: #3730a3;">--</span>
+                </div>
+                <div style="height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; display: flex;">
+                    <div id="budgetBarFill" style="height: 100%; transition: 0.5s;"></div>
+                    <div id="budgetBarPredictedFill" style="height: 100%; transition: 0.5s; background: repeating-linear-gradient(45deg, #fcd34d, #fcd34d 5px, #fbbf24 5px, #fbbf24 10px);"></div>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Remaining Funds</div>
+                <div class="budget-remaining-val" style="font-size: 1.5rem; font-weight: 900; color: #10b981;">--</div>
+            </div>
+        </div>
 
 
 
@@ -367,23 +389,31 @@ $recipes_json = json_encode($recipes);
             </div>
 
             <!-- Attendance Legend -->
-            <div style="border-bottom: 1px dashed var(--border); padding-bottom: 1.25rem; margin-bottom: 1.5rem; margin-top: 0.5rem; display: flex; gap: 2.5rem; flex-wrap: wrap; justify-content: center;">
-                <div style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
+            <div
+                style="border-bottom: 1px dashed var(--border); padding-bottom: 1.25rem; margin-bottom: 1.5rem; margin-top: 0.5rem; display: flex; gap: 2.5rem; flex-wrap: wrap; justify-content: center;">
+                <div
+                    style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
                     <span class="material-icons" style="font-size:16px; color:#10b981;">done</span> Served
                 </div>
-                <div style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
+                <div
+                    style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
                     <span class="material-icons" style="font-size:16px; color:#ef4444;">close</span> Absent
                 </div>
-                <div style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
+                <div
+                    style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
                     <span class="material-icons" style="font-size:16px; color:#60a5fa;">water_drop</span> Milk Served
                 </div>
-                <div style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
+                <div
+                    style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
                     <span class="material-icons" style="font-size:16px; color:#94a3b8;">local_drink</span> No Milk
                 </div>
-                <div style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
-                    <span class="material-icons" style="font-size:16px; color:#f59e0b;">bakery_dining</span> Snack Served
+                <div
+                    style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
+                    <span class="material-icons" style="font-size:16px; color:#f59e0b;">bakery_dining</span> Snack
+                    Served
                 </div>
-                <div style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
+                <div
+                    style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
                     <span class="material-icons" style="font-size:16px; color:#94a3b8;">cookie</span> No Snack
                 </div>
             </div>
@@ -541,7 +571,7 @@ $recipes_json = json_encode($recipes);
             if (body) body.innerHTML = `
                 <div style="text-align:center; padding: 6rem 0;">
                     <div class="loader" style="margin-bottom: 1.5rem;"></div>
-                    <div style="font-weight:900; color:var(--text-muted); font-size:1.1rem; letter-spacing:1px; text-transform:uppercase;">Decoding Strategy Portfolio...</div>
+                    <div style="font-weight:700; color:var(--text-muted); font-size:1.1rem; letter-spacing:0.5px;">Loading Daily Meal Configuration...</div>
                 </div>
             `;
             const actions = document.getElementById('wsActions');
@@ -564,7 +594,7 @@ $recipes_json = json_encode($recipes);
         };
 
         function renderEmptyUI() {
-            document.getElementById('wsStatus').innerHTML = '<span class="material-icons" style="font-size:14px; color:var(--error);">error_outline</span> Unplanned Strategy Area';
+            document.getElementById('wsStatus').innerHTML = '<span class="material-icons" style="font-size:14px; color:var(--text-muted);">calendar_today</span> No Meal Plan Assigned';
             document.getElementById('wsActions').innerHTML = `
                 <button class="btn-m3 btn-m3-primary" onclick="generateToday()"><span class="material-icons" style="font-size:18px;">auto_fix_high</span> Generate Meal Plan</button>
                 <button class="btn-m3 btn-m3-tonal" onclick="openBulkGenerateModal()"><span class="material-icons" style="font-size:18px;">auto_awesome</span> Bulk Generate Meal Plans</button>
@@ -580,17 +610,29 @@ $recipes_json = json_encode($recipes);
 
 
         function renderPlanUI() {
+            const scrollPos = window.scrollY;
+
+            // Capture accordion states
+            const accStates = {};
+            document.querySelectorAll('.student-accordion').forEach(acc => {
+                const body = acc.querySelector('.accordion-body');
+                accStates[acc.id] = {
+                    expanded: acc.classList.contains('expanded'),
+                    scrollTop: body ? body.scrollTop : 0
+                };
+            });
+
             const actions = document.getElementById('wsActions');
             if (currentPlan.is_served) {
-                document.getElementById('wsStatus').innerHTML = '<span style="color:var(--success);"><span class="material-icons" style="font-size:14px; vertical-align:middle;">verified</span> Mission Secured & Verified</span>';
-                actions.innerHTML = `<button class="btn-m3 btn-m3-outline" onclick="unlockPlan()"><span class="material-icons" style="font-size:18px;">lock_open</span> Unlock Strategy</button>`;
+                document.getElementById('wsStatus').innerHTML = '<span style="color:var(--success); font-weight:700;"><span class="material-icons" style="font-size:14px; vertical-align:middle;">verified</span> Meal Plan Served & Finalized</span>';
+                actions.innerHTML = `<button class="btn-m3 btn-m3-outline" onclick="unlockPlan()"><span class="material-icons" style="font-size:18px;">lock_open</span> Unlock Plan</button>`;
             } else {
-                document.getElementById('wsStatus').innerHTML = '<span style="color:var(--primary);"><span class="material-icons" style="font-size:14px; vertical-align:middle;">settings</span> Strategy Draft Active</span>';
+                document.getElementById('wsStatus').innerHTML = '<span style="color:var(--primary); font-weight:700;"><span class="material-icons" style="font-size:14px; vertical-align:middle;">edit_note</span> Draft Plan Active</span>';
                 actions.innerHTML = `
                     <button class="btn-m3 btn-m3-primary" onclick="lockPlan()"><span class="material-icons" style="font-size:18px;">check_circle</span> Finalize & Serve</button>
-                    <button class="btn-m3 btn-m3-outline" onclick="openEditRecipesModal()"><span class="material-icons" style="font-size:18px;">edit</span> Edit Components</button>
-                    <button class="btn-m3 btn-m3-outline" onclick="openRescheduleModal()"><span class="material-icons" style="font-size:18px;">event_repeat</span> Reschedule Date</button>
-                    <button class="btn-m3 btn-m3-danger" onclick="deletePlan()"><span class="material-icons" style="font-size:18px;">delete</span> Purge</button>
+                    <button class="btn-m3 btn-m3-outline" onclick="openEditRecipesModal()"><span class="material-icons" style="font-size:18px;">restaurant</span> Modify Meals</button>
+                    <button class="btn-m3 btn-m3-outline" onclick="openRescheduleModal()"><span class="material-icons" style="font-size:18px;">event_repeat</span> Reschedule</button>
+                    <button class="btn-m3 btn-m3-outline" style="color:var(--error);" onclick="deletePlan()"><span class="material-icons" style="font-size:18px;">delete</span> Delete Plan</button>
                 `;
             }
 
@@ -599,9 +641,9 @@ $recipes_json = json_encode($recipes);
             let swapAtoB = currentPlan.meal_b && !currentPlan.is_served ? { to: 'b' } : null;
             let swapBtoA = !currentPlan.is_served ? { to: 'a' } : null;
 
-            html += buildFullMealCard('A', currentPlan.meal_a, currentPlan.meal_a_list, swapAtoB);
+            html += buildFullMealCard('A', currentPlan.meal_a, currentPlan.meal_a_list, swapAtoB, accStates['accA']);
             if (currentPlan.meal_b) {
-                html += buildFullMealCard('B', currentPlan.meal_b, currentPlan.meal_b_list, swapBtoA);
+                html += buildFullMealCard('B', currentPlan.meal_b, currentPlan.meal_b_list, swapBtoA, accStates['accB']);
             }
 
             html += `</div>`;
@@ -610,13 +652,27 @@ $recipes_json = json_encode($recipes);
                 html += buildSnackCard(currentPlan.snack);
             }
             document.getElementById('wsBody').innerHTML = html;
+
+            // Restore accordion states
+            Object.keys(accStates).forEach(id => {
+                const acc = document.getElementById(id);
+                if (acc) {
+                    if (accStates[id].expanded) acc.classList.add('expanded');
+                    else acc.classList.remove('expanded');
+                    const body = acc.querySelector('.accordion-body');
+                    if (body) body.scrollTop = accStates[id].scrollTop;
+                }
+            });
+
+            window.scrollTo(0, scrollPos);
         }
 
-        function buildFullMealCard(type, recipeId, list, targetListParams) {
+        function buildFullMealCard(type, recipeId, list, targetListParams, lastState) {
             if (!recipeId) return '';
             const rec = recipes.find(r => r.recipe_id === recipeId);
             const color = rec ? (rec.hex_color || '#3b82f6') : '#3b82f6';
             const name = rec ? rec.recipe_name : 'Unknown';
+            const isExpanded = lastState ? lastState.expanded : true;
 
             let tagsHtml = '';
             if (rec && rec.allergens) {
@@ -682,7 +738,7 @@ $recipes_json = json_encode($recipes);
                     <div class="macro-box"><div class="macro-lbl">PROTEIN</div><div class="macro-val">${rec ? Number(rec.protein_g).toFixed(1) + 'g' : '--'}</div></div>
                 </div>
                 <div class="tag-list" style="margin-bottom:1rem;">${tagsHtml}</div>
-                <div class="student-accordion expanded" id="acc${type}">
+                <div class="student-accordion ${isExpanded ? 'expanded' : ''}" id="acc${type}">
                     <div class="accordion-header" onclick="toggleAcc('acc${type}')"><span>Students (${list ? list.length : 0})</span><span class="material-icons">expand_more</span></div>
                     <div class="accordion-body">${studentsHtml}</div>
                 </div>
@@ -835,19 +891,36 @@ $recipes_json = json_encode($recipes);
                 const res = await fetch('../../api_budget_status.php');
                 const d = await res.json();
                 if (!d) return;
-                const pct = d.pct;
-                const color = pct >= 90 ? '#ef4444' : (pct >= 70 ? '#f59e0b' : '#10b981');
-                const bgBadge = pct >= 90 ? '#fee2e2' : (pct >= 70 ? '#fef3c7' : '#d1fae5');
+                
+                const totalPct = Math.min(100, Number(d.pct) + Number(d.predicted_pct || 0));
+                const color = totalPct >= 90 ? '#ef4444' : (totalPct >= 70 ? '#f59e0b' : '#10b981');
+                const bgBadge = totalPct >= 90 ? '#fee2e2' : (totalPct >= 70 ? '#fef3c7' : '#d1fae5');
+                
                 const bar = document.getElementById('budgetBar');
                 if (!bar) return;
+                
                 bar.querySelector('.budget-pct-badge').style.background = bgBadge;
                 bar.querySelector('.budget-pct-badge').style.color = color;
-                bar.querySelector('.budget-pct-badge').textContent = pct + '% Used';
+                bar.querySelector('.budget-pct-badge').textContent = totalPct.toFixed(1) + '% Used/Predicted';
+                
                 bar.querySelector('.budget-spent-val').textContent = '₱' + Number(d.spent).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+                if (bar.querySelector('.budget-predicted-val')) {
+                    bar.querySelector('.budget-predicted-val').textContent = '₱' + Number(d.predicted || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+                }
+                
                 bar.querySelector('.budget-remaining-val').style.color = color;
                 bar.querySelector('.budget-remaining-val').textContent = '₱' + Number(d.remaining).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+                
                 const fill = document.getElementById('budgetBarFill');
-                if (fill) { fill.style.width = Math.min(pct, 100) + '%'; fill.style.background = color; }
+                const predFill = document.getElementById('budgetBarPredictedFill');
+                
+                if (fill) { 
+                    fill.style.width = Math.min(Number(d.pct), 100) + '%'; 
+                    fill.style.background = color; 
+                }
+                if (predFill) {
+                    predFill.style.width = Math.min(Number(d.predicted_pct || 0), 100) + '%';
+                }
             } catch (e) { }
         }
 
@@ -1000,6 +1073,7 @@ $recipes_json = json_encode($recipes);
         await renderCalendar();
         let todayStr = new Date().toLocaleDateString('en-CA');
         selectDate(todayStr);
+        refreshBudgetBar();
     });
 </script>
 

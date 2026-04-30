@@ -12,7 +12,6 @@ if ($role !== 'Admin' && $role !== 'Super Admin') {
     exit;
 }
 
-
 // Fetch Settings
 $res_settings = $conn->query("SELECT * FROM settings");
 $settings = [];
@@ -37,22 +36,22 @@ while ($row = $res_cat->fetch_assoc()) {
     else
         $categories[$row['category']] = (float) $row['total'];
 }
-
-// Kitchen Documentation
-$docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_documentation kd LEFT JOIN users u ON kd.uploaded_by = u.user_id ORDER BY kd.tagged_date DESC, kd.created_at DESC");
-
-// Fetch Users for Account Management
-$users_list = $conn->query("SELECT user_id, faculty_name, role, status FROM users ORDER BY role ASC, faculty_name ASC");
-
 ?>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
+    /* MANAGEMENT HUB SPECIFIC STYLES */
+    .mgmt-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 2.5rem;
+    }
+
     .mgmt-tabs {
         display: flex;
         gap: 0.75rem;
-        margin-bottom: 2rem;
+        margin-top: 1.5rem;
+        margin-bottom: 2.5rem;
         padding-bottom: 1rem;
         border-bottom: 1px dashed var(--border);
         overflow-x: auto;
@@ -106,196 +105,176 @@ $users_list = $conn->query("SELECT user_id, faculty_name, role, status FROM user
             transform: translateY(0);
         }
     }
-        color: var(--text-muted);
-        font-weight: 700;
-        font-size: 0.8rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        white-space: nowrap;
-    }
 
-    .tab-btn:hover {
-        background: #f8fafc;
-        border-color: #cbd5e1;
-        color: var(--text-main);
-    }
-
-    .tab-btn.active {
-        background: var(--primary);
-        color: white;
-        border-color: var(--primary);
-        box-shadow: 0 4px 12px rgba(0, 97, 255, 0.25);
-    }
-
-    .tab-content {
-        display: none;
-    }
-
-    .tab-content.active {
-        display: block;
-    }
-
-    .doc-grid {
+    .kpi-row {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        grid-template-columns: repeat(3, 1fr);
         gap: 1.5rem;
+        margin-bottom: 2rem;
     }
 
-    .doc-card {
+    .kpi-card {
         background: white;
+        padding: 1.5rem;
+        border-radius: 16px;
         border: 1px solid var(--border);
-        border-radius: 12px;
-        overflow: hidden;
-        transition: 0.2s;
+        box-shadow: var(--shadow-sm);
     }
 
-    .doc-card:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--shadow-md);
-    }
-
-    .doc-img {
-        width: 100%;
-        height: 180px;
-        object-fit: cover;
-        background: #f1f5f9;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .doc-meta {
-        padding: 1rem;
-    }
-
-    .doc-date {
-        font-size: 0.7rem;
+    .kpi-label {
+        font-size: 0.75rem;
         font-weight: 800;
-        color: var(--primary);
+        color: var(--text-muted);
         text-transform: uppercase;
-        margin-bottom: 0.25rem;
-    }
-
-    .doc-desc {
-        font-size: 0.85rem;
-        color: var(--text-main);
-        font-weight: 600;
-        line-height: 1.4;
         margin-bottom: 0.5rem;
     }
 
-    .doc-uploader {
-        font-size: 0.7rem;
+    .kpi-value {
+        font-size: 1.75rem;
+        font-weight: 900;
+        color: var(--text-main);
+    }
+
+    .kpi-subtext {
+        font-size: 0.75rem;
         color: var(--text-muted);
-        border-top: 1px solid #f1f5f9;
-        padding-top: 0.5rem;
+        margin-top: 0.25rem;
+    }
+
+    .kpi-card.warning {
+        border-left: 5px solid var(--warning);
+        background: #fffbeb;
+    }
+
+    .kpi-card.warning .kpi-value {
+        color: var(--warning);
+    }
+
+    .main-grid {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 2rem;
+    }
+
+    .card-header {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
     }
 
-    .attendance-grid {
-        background: white;
-        overflow-x: auto;
-        border: 1px solid var(--border);
-        border-radius: 12px;
+    .card-header h3 {
+        font-size: 1.1rem;
+        font-weight: 800;
+        margin: 0;
     }
 
-    .att-table {
+    .chart-container {
+        position: relative;
+        height: 280px;
+        width: 100%;
+    }
+
+    .reports-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 0.75rem;
     }
 
-    .att-table th,
-    .att-table td {
-        border: 1px solid var(--border);
-        padding: 0.5rem;
-        text-align: center;
-    }
-
-    .att-table th {
-        background: #f8fafc;
-        font-weight: 800;
-    }
-
-    .att-table td.name {
+    .reports-table th {
         text-align: left;
-        font-weight: 700;
-        background: #fcfcfc;
-        white-space: nowrap;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        padding: 1rem;
+        border-bottom: 1px solid var(--border);
     }
 
-    .att-status-s {
-        color: #10b981;
-        font-weight: 900;
+    .reports-table td {
+        padding: 1.25rem 1rem;
+        border-bottom: 1px solid #f8fafc;
+        font-size: 0.875rem;
     }
 
-    .att-status-a {
-        color: #f43f5e;
-        font-weight: 900;
+    .budget-tag {
+        padding: 0.3rem 0.75rem;
+        border-radius: 100px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .tag-labor {
+        background: #e0f2fe;
+        color: #0369a1;
+    }
+
+    .tag-logistics {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .tag-misc {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .tag-food {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-field label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-field input,
+    .form-field select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-weight: 600;
+        outline: none;
+        transition: 0.2s;
+    }
+
+    .form-field input:focus {
+        border-color: var(--primary);
     }
 
     @media print {
-        .no-print { display: none !important; }
-        .tab-content { display: block !important; }
-        
-        /* Attendance Roster isolation */
-        body.print-roster-only .sidebar,
-        body.print-roster-only .topbar,
-        body.print-roster-only .mgmt-header,
-        body.print-roster-only .mgmt-tabs,
-        body.print-roster-only .tab-content:not(#tab-attendance) {
+        .no-print {
             display: none !important;
         }
 
-        body.print-roster-only .main-content {
-            margin: 0 !important;
-            padding: 0 !important;
+        .tab-content {
+            display: block !important;
         }
 
-        /* SBFP Form Landscape enforcement */
-        body.print-landscape {
-            @page { size: landscape; margin: 5mm; }
+        .main-content {
+            margin: 0 !important;
+            width: 100% !important;
         }
     }
 </style>
 
-<script>
-    function printRosterIsolated() {
-        document.body.classList.add('print-roster-only');
-        window.print();
-        setTimeout(() => { document.body.classList.remove('print-roster-only'); }, 500);
-    }
-
-    async function saveBudgetSettings() {
-        const alloc = document.getElementById('setAllocBudget').value;
-        const daily = document.getElementById('setDailyBudget').value;
-        if (!alloc || !daily) return alert('Please fill in both budget fields.');
-        try {
-            const res = await fetch('api_save_settings.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ total_allocated_budget: alloc, total_daily_budget: daily })
-            });
-            const d = await res.json();
-            if (d.success) {
-                // Flash the button green briefly
-                const btn = document.querySelector('[onclick="saveBudgetSettings()"]');
-                btn.style.background = '#10b981';
-                btn.textContent = '✓ Saved!';
-                setTimeout(() => { btn.style.background = ''; btn.innerHTML = '<span class="material-icons" style="font-size:16px; vertical-align:middle;">save</span> Save Parameters'; location.reload(); }, 1200);
-            } else { alert('Error: ' + d.message); }
-        } catch (e) { alert('Network error saving settings.'); }
-    }
-</script>
-
 <div class="content">
     <div class="mgmt-header no-print">
         <div class="mgmt-title">
-            <h2>Administrative Management Hub</h2>
-            <p>Fiscal control, user accounts, and system configuration tools.</p>
+            <h2 style="font-size: 1.75rem; font-weight: 900; margin-bottom: 0.4rem;">Administrative Management Hub</h2>
+            <p style="color: var(--text-muted);">Fiscal control, user accounts, and system configuration tools.</p>
         </div>
         <div style="display:flex; gap:0.5rem;">
             <button class="btn-m3 btn-m3-outline" onclick="window.print()"><span class="material-icons">print</span>
@@ -304,43 +283,40 @@ $users_list = $conn->query("SELECT user_id, faculty_name, role, status FROM user
     </div>
 
     <div class="mgmt-tabs no-print">
-        <button
-            class="tab-btn <?= (!isset($_GET['tab']) || $_GET['tab'] == 'fiscal') ? 'active' : '' ?>"
+        <button class="tab-btn <?= (!isset($_GET['tab']) || $_GET['tab'] == 'fiscal') ? 'active' : '' ?>"
             data-tab="fiscal" onclick="switchTab('fiscal')">FISCAL CONTROL</button>
         <button class="tab-btn <?= (isset($_GET['tab']) && $_GET['tab'] == 'users') ? 'active' : '' ?>" data-tab="users"
             onclick="switchTab('users')">USER ACCOUNTS</button>
-        <button class="tab-btn <?= (isset($_GET['tab']) && $_GET['tab'] == 'settings') ? 'active' : '' ?>" data-tab="settings"
-            onclick="switchTab('settings')">SYSTEM SETTINGS</button>
+        <button class="tab-btn <?= (isset($_GET['tab']) && $_GET['tab'] == 'settings') ? 'active' : '' ?>"
+            data-tab="settings" onclick="switchTab('settings')">SYSTEM SETTINGS</button>
     </div>
-    <?php 
-    $activeTab = $_GET['tab'] ?? 'fiscal';
-    ?>
+
+    <?php $activeTab = $_GET['tab'] ?? 'fiscal'; ?>
 
     <!-- TAB: FISCAL -->
-    <?php if ($role === 'Admin' || $role === 'Super Admin'): ?>
     <div id="tab-fiscal" class="tab-content <?= ($activeTab == 'fiscal') ? 'active' : '' ?>">
         <div class="kpi-row no-print">
-            <div class="kpi-card" style="min-height: 140px;">
+            <div class="kpi-card">
                 <div class="kpi-label" style="display:flex; justify-content:space-between; align-items:center;">
                     Strategic Allocation
-                    <button onclick="toggleBudgetEdit()" style="background:none; border:none; color:var(--primary); cursor:pointer;"><span class="material-icons" style="font-size:16px;">edit</span></button>
+                    <button onclick="toggleBudgetEdit()"
+                        style="background:none; border:none; color:var(--primary); cursor:pointer;"><span
+                            class="material-icons" style="font-size:18px;">edit</span></button>
                 </div>
                 <div id="budgetDisplay">
                     <div class="kpi-value">&#8369;<?= number_format($allocated_budget, 2) ?></div>
                     <div class="kpi-subtext">Base funding cap for the school year.</div>
                 </div>
                 <div id="budgetEdit" style="display:none; margin-top:0.5rem;">
-                    <div style="margin-bottom:0.5rem;">
-                        <label style="font-size:0.65rem; color:var(--text-muted); font-weight:700;">Total Allocation</label>
-                        <input type="number" id="setAllocBudget" value="<?= $allocated_budget ?>" style="width:100%; padding:0.4rem; border:1px solid var(--border); border-radius:6px; font-weight:700;">
-                    </div>
                     <div style="margin-bottom:0.75rem;">
-                        <label style="font-size:0.65rem; color:var(--text-muted); font-weight:700;">Daily Budget Limit</label>
-                        <input type="number" id="setDailyLimit" value="<?= $daily_limit ?>" style="width:100%; padding:0.4rem; border:1px solid var(--border); border-radius:6px; font-weight:700;">
+                        <input type="number" id="setAllocBudget" value="<?= $allocated_budget ?>"
+                            style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:8px; font-weight:700;">
                     </div>
                     <div style="display:flex; gap:0.5rem;">
-                        <button class="btn-m3 btn-m3-primary" onclick="saveBudgetSettings()" style="padding:4px 12px; font-size:0.7rem;"><span class="material-icons" style="font-size:14px;">save</span> Save</button>
-                        <button class="tab-btn" onclick="toggleBudgetEdit()" style="padding:4px 12px; font-size:0.7rem; border-radius:100px;">Cancel</button>
+                        <button class="btn-m3 btn-m3-primary" onclick="saveBudgetSettings()"
+                            style="padding:6px 14px; font-size:0.75rem;">Save</button>
+                        <button class="btn-m3 btn-m3-outline" onclick="toggleBudgetEdit()"
+                            style="padding:6px 14px; font-size:0.75rem;">Cancel</button>
                     </div>
                 </div>
             </div>
@@ -351,16 +327,17 @@ $users_list = $conn->query("SELECT user_id, faculty_name, role, status FROM user
             </div>
             <div class="kpi-card <?= $remaining_funds < 50000 ? 'warning' : '' ?>">
                 <div class="kpi-label">Liquidity Pool</div>
-                <div class="kpi-value">&#8369;<?= number_format($remaining_funds, 2) ?></div>
+                <div class="kpi-value" style="<?= $remaining_funds < 0 ? 'color:var(--error);' : '' ?>">
+                    &#8369;<?= number_format($remaining_funds, 2) ?></div>
                 <div class="kpi-subtext">Daily Limit: &#8369;<?= number_format($daily_limit, 0) ?></div>
             </div>
         </div>
 
         <div class="main-grid">
-            <div style="display:flex; flex-direction:column; gap:1.5rem;">
+            <div style="display:flex; flex-direction:column; gap:2rem;">
                 <div class="dashboard-card no-print">
                     <div class="card-header">
-                        <span class="material-icons">pie_chart</span>
+                        <span class="material-icons" style="color:var(--primary);">pie_chart</span>
                         <h3>Budget Distribution</h3>
                     </div>
                     <div class="chart-container">
@@ -368,375 +345,298 @@ $users_list = $conn->query("SELECT user_id, faculty_name, role, status FROM user
                     </div>
                 </div>
                 <div class="dashboard-card no-print">
-                    <div class="card-header"><span class="material-icons">receipt_long</span>
+                    <div class="card-header">
+                        <span class="material-icons" style="color:var(--primary);">receipt_long</span>
                         <h3>Manual Log</h3>
                     </div>
                     <div class="logging-form">
                         <div class="form-grid">
                             <div class="form-field"><label>Amount</label><input type="number" id="logAmount"
                                     placeholder="0.00"></div>
-                            <div class="form-field"><label>Category</label><select id="logCategory">
+                            <div class="form-field">
+                                <label>Category</label>
+                                <select id="logCategory">
                                     <option>Labor Costs</option>
                                     <option>Logistics</option>
                                     <option>Misc</option>
-                                </select></div>
+                                </select>
+                            </div>
                         </div>
-                        <div class="form-field" style="margin-bottom:1rem;"><label>Description</label><input type="text"
-                                id="logDesc"></div>
-                        <button class="btn-m3 btn-m3-primary" style="width:100%; border-radius: 8px;"
+                        <div class="form-field" style="margin-bottom:1.5rem;">
+                            <label>Description</label>
+                            <input type="text" id="logDesc" placeholder="e.g., LPG refill, Transport fees">
+                        </div>
+                        <button class="btn-m3 btn-m3-primary" style="width:100%; border-radius: 12px; height: 48px;"
                             onclick="submitLog()">Record Log</button>
                     </div>
                 </div>
             </div>
             <div class="dashboard-card">
-                <div class="card-header"><span class="material-icons">history</span>
-                    <h3>Expediture Ledger</h3>
+                <div class="card-header">
+                    <span class="material-icons" style="color:var(--primary);">history</span>
+                    <h3>Expenditure Ledger</h3>
                 </div>
-                <table class="reports-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Category</th>
-                            <th>Description</th>
-                            <th style="text-align:right;">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php $l = $conn->query("SELECT * FROM budget_logs ORDER BY created_at DESC LIMIT 8");
-                        while ($r = $l->fetch_assoc()): ?>
+                <div style="overflow-x: auto;">
+                    <table class="reports-table">
+                        <thead>
                             <tr>
-                                <td><?= date('M d', strtotime($r['created_at'])) ?></td>
-                                <td><span
-                                        class="budget-tag tag-<?= strtolower(explode(' ', $r['category'])[0]) ?>"><?= $r['category'] ?></span>
-                                </td>
-                                <td style="color:var(--text-muted);"><?= $r['description'] ?></td>
-                                <td style="text-align:right; font-weight:700;">&#8369;<?= number_format($r['amount'], 2) ?>
-                                </td>
+                                <th>Date</th>
+                                <th>Category</th>
+                                <th>Description</th>
+                                <th style="text-align:right;">Amount</th>
+                                <th style="text-align:center;">Actions</th>
                             </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div> <!-- END TAB: FISCAL -->
-
-
-    <!-- TAB: SETTINGS -->
-    <div id="tab-settings" class="tab-content <?= ($activeTab == 'settings') ? 'active' : '' ?>">
-        <div style="margin-bottom:1.5rem;">
-            <h3 style="margin:0;">Global System Settings</h3>
-            <p style="font-size:0.8rem; color:var(--text-muted);">Configure school identity and form defaults.</p>
-        </div>
-        <div class="dashboard-card" style="max-width: 800px;">
-            <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
-                <div class="form-field">
-                    <label>School Name</label>
-                    <input type="text" id="setSchoolName" value="<?= $settings['school_name'] ?? '' ?>" placeholder="e.g. Mabini Elementary School">
+                        </thead>
+                        <tbody>
+                            <?php
+                            $l = $conn->query("SELECT * FROM budget_logs ORDER BY created_at DESC LIMIT 10");
+                            while ($r = $l->fetch_assoc()):
+                                $cat_class = 'tag-' . strtolower(explode(' ', $r['category'])[0]);
+                                $log_json = htmlspecialchars(json_encode($r), ENT_QUOTES);
+                                ?>
+                                <tr>
+                                    <td style="white-space:nowrap;"><?= date('M d, Y', strtotime($r['created_at'])) ?></td>
+                                    <td><span class="budget-tag <?= $cat_class ?>"><?= $r['category'] ?></span></td>
+                                    <td style="color:var(--text-muted); font-weight: 500;">
+                                        <?= htmlspecialchars($r['description']) ?></td>
+                                    <td style="text-align:right; font-weight:800; color:var(--text-main);">
+                                        &#8369;<?= number_format($r['amount'], 2) ?></td>
+                                    <td style="text-align:center;">
+                                        <button class="btn-m3 btn-m3-outline" style="padding: 4px 10px; font-size: 0.7rem;" onclick='openEditLogModal(<?= $log_json ?>)'>
+                                            <span class="material-icons" style="font-size:14px;">edit</span>
+                                        </button>
+                                        <button class="btn-m3 btn-m3-danger" style="padding: 4px 10px; font-size: 0.7rem;" onclick='deleteLog(<?= $r['id'] ?>)'>
+                                            <span class="material-icons" style="font-size:14px;">delete</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
                 </div>
-                <div class="form-field">
-                    <label>School ID</label>
-                    <input type="text" id="setSchoolId" value="<?= $settings['school_id'] ?? '' ?>" placeholder="6-digit ID">
-                </div>
-            </div>
-            <div class="form-grid">
-                <div class="form-field">
-                    <label>District</label>
-                    <input type="text" id="setDistrict" value="<?= $settings['district'] ?? '' ?>">
-                </div>
-                <div class="form-field">
-                    <label>Division/Region</label>
-                    <input type="text" id="setRegion" value="<?= $settings['region'] ?? '' ?>">
-                </div>
-            </div>
-            <div class="form-grid">
-                <div class="form-field">
-                    <label>Principal / School Head</label>
-                    <input type="text" id="setPrincipal" value="<?= $settings['principal_name'] ?? '' ?>">
-                </div>
-                <div class="form-field">
-                    <label>SBFP Coordinator</label>
-                    <input type="text" id="setCoordinator" value="<?= $settings['sbfp_coordinator'] ?? '' ?>">
-                </div>
-            </div>
-            <div style="margin-top:2rem; display:flex; justify-content:flex-end;">
-                <button class="btn-m3 btn-m3-primary" onclick="saveGlobalSettings()"><span class="material-icons">save</span> Save Identity Parameters</button>
             </div>
         </div>
     </div>
 
     <!-- TAB: USERS -->
     <div id="tab-users" class="tab-content <?= ($activeTab == 'users') ? 'active' : '' ?>">
-        <div style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem;">
-            <!-- User List -->
-            <div class="dashboard-card">
-                <div class="card-header"><span class="material-icons">person</span><h3>System Personnel</h3></div>
-                <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--border);">
-                            <th style="text-align:left; padding:1rem;">Name / Username</th>
-                            <th style="text-align:left; padding:1rem;">Access Level</th>
-                            <th style="text-align:right; padding:1rem;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php while($u = $users_list->fetch_assoc()): ?>
-                        <tr style="border-bottom: 1px solid var(--border);">
-                            <td style="padding:1rem;">
-                                <div style="font-weight:700; color:var(--text-main);"><?= htmlspecialchars($u['faculty_name']) ?></div>
-                                <div style="font-size:0.75rem; color:var(--text-muted);">UID: #<?= $u['user_id'] ?></div>
-                            </td>
-                            <td style="padding:1rem;">
-                                <?php 
-                                    $badgeStyle = "background:#f1f5f9; color:#64748b;";
-                                    if($u['role'] === 'Super Admin') $badgeStyle = "background:#eff6ff; color:#1d4ed8;";
-                                    else if($u['role'] === 'Admin') $badgeStyle = "background:#fefce8; color:#a16207;";
-                                ?>
-                                <span style="padding:4px 10px; border-radius:100px; font-size:0.7rem; font-weight:800; text-transform:uppercase; <?= $badgeStyle ?>">
-                                    <?= htmlspecialchars($u['role']) ?>
-                                </span>
-                                <?php if($u['status'] === 'Disabled'): ?>
-                                    <span style="margin-left: 6px; padding:4px 10px; border-radius:100px; font-size:0.7rem; font-weight:800; text-transform:uppercase; background:#fee2e2; color:#b91c1c;">
-                                        DISABLED
-                                    </span>
-                                <?php endif; ?>
-                            </td>
-                            <td style="padding:1rem; text-align:right;">
-                                <?php if($role === 'Super Admin' && $u['user_id'] != $_SESSION['user_id']): ?>
-                                    <?php if($u['status'] === 'Disabled'): ?>
-                                        <button class="btn-m3 btn-m3-tonal" style="padding: 6px 12px; font-size: 0.75rem;" title="Restore Access" onclick="deleteUser(<?= $u['user_id'] ?>)">
-                                            <span class="material-icons" style="font-size:14px;">how_to_reg</span> Restore Access
-                                        </button>
-                                    <?php else: ?>
-                                        <button class="btn-m3 btn-m3-danger" style="padding: 6px 12px; font-size: 0.75rem;" title="Revoke Access" onclick="deleteUser(<?= $u['user_id'] ?>)">
-                                            <span class="material-icons" style="font-size:14px;">no_accounts</span> Revoke Access
-                                        </button>
-                                    <?php endif; ?>
-                                    <button class="btn-m3 btn-m3-outline" style="padding: 6px 12px; font-size: 0.75rem; margin-left: 0.5rem; color: #b91c1c; border-color: #fca5a5;" title="Permanent Delete" onclick="permanentDeleteUser(<?= $u['user_id'] ?>)">
-                                        <span class="material-icons" style="font-size:14px;">delete_forever</span>
-                                    </button>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
+            <div>
+                <h3 style="margin:0;">User Account Management</h3>
+                <p style="font-size:0.85rem; color:var(--text-muted);">Manage faculty and administrative access
+                    privileges.</p>
             </div>
+            <button class="btn-m3 btn-m3-primary" onclick="openAddUserModal()">
+                <span class="material-icons">person_add</span> Add New User
+            </button>
+        </div>
 
-            <!-- Create Account -->
-            <div class="dashboard-card">
-                <div class="card-header"><span class="material-icons">person_add</span><h3>Provision Account</h3></div>
-                <div style="display:flex; flex-direction:column; gap:1rem;">
-                    <div class="form-field">
-                        <label>Full Name / Username</label>
-                        <input type="text" id="newUserName" placeholder="Enter display name">
-                    </div>
-                    <div class="form-field">
-                        <label>Initial Password</label>
-                        <input type="password" id="newUserPass" placeholder="••••••••">
-                    </div>
-                    <div class="form-field">
-                        <label>Access Role</label>
-                        <select id="newUserRole">
-                            <option value="Faculty">Faculty</option>
-                            <?php if($role === 'Super Admin'): ?>
-                                <option value="Admin">Administrator</option>
-                                <option value="Super Admin">Super Administrator</option>
-                            <?php endif; ?>
-                        </select>
-                    </div>
-                    <button class="btn-m3 btn-m3-primary" style="width:100%; margin-top:1rem;" onclick="createUser()">
-                        <span class="material-icons">verified_user</span> Create Account
-                    </button>
-                </div>
-            </div>
+        <div class="dashboard-card">
+            <table class="reports-table">
+                <thead>
+                    <tr>
+                        <th>Faculty Name</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $users = $conn->query("SELECT * FROM users ORDER BY role ASC, faculty_name ASC");
+                    while ($u = $users->fetch_assoc()):
+                        ?>
+                        <tr>
+                            <td style="font-weight:700;"><?= htmlspecialchars($u['faculty_name']) ?></td>
+                            <td><span class="badge"
+                                    style="background:#f1f5f9; color:var(--text-main);"><?= $u['role'] ?></span></td>
+                            <td>
+                                <span class="badge"
+                                    style="background:<?= $u['status'] == 'Active' ? '#dcfce7' : '#fee2e2' ?>; color:<?= $u['status'] == 'Active' ? '#166534' : '#991b1b' ?>;">
+                                    <?= $u['status'] ?>
+                                </span>
+                            </td>
+                            <td style="text-align:right;">
+                                <button class="btn-m3 btn-m3-outline" style="padding: 6px 12px;"
+                                    onclick="toggleUserStatus(<?= $u['user_id'] ?>)">
+                                    <span class="material-icons"
+                                        style="font-size:18px;"><?= $u['status'] == 'Active' ? 'block' : 'check_circle' ?></span>
+                                </button>
+                                <button class="btn-m3 btn-m3-outline" style="padding: 6px 12px; color:var(--error);"
+                                    onclick="permanentDeleteUser(<?= $u['user_id'] ?>)">
+                                    <span class="material-icons" style="font-size:18px;">delete_forever</span>
+                                </button>
+                            </td>
+                        </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
         </div>
     </div>
-    <?php endif; ?>
 
-    <!-- DOCUMENTATION TABS REMOVED (Moved to documentation.php) -->
-</div> <!-- END .content --></div>
-
-
+    <!-- TAB: SETTINGS -->
+    <div id="tab-settings" class="tab-content <?= ($activeTab == 'settings') ? 'active' : '' ?>">
+        <div style="margin-bottom:2rem;">
+            <h3 style="margin:0;">Global System Settings</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted);">Configure school identity and form defaults.</p>
+        </div>
+        <div class="dashboard-card" style="max-width: 850px;">
+            <div class="form-grid">
+                <div class="form-field" style="grid-column: span 2;">
+                    <label>School Name</label>
+                    <input type="text" id="setSchoolName"
+                        value="<?= htmlspecialchars($settings['school_name'] ?? '') ?>"
+                        placeholder="e.g. Mabini Elementary School">
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-field"><label>School ID</label><input type="text" id="setSchoolId"
+                        value="<?= htmlspecialchars($settings['school_id'] ?? '') ?>"></div>
+                <div class="form-field"><label>District</label><input type="text" id="setDistrict"
+                        value="<?= htmlspecialchars($settings['district'] ?? '') ?>"></div>
+            </div>
+            <div class="form-grid">
+                <div class="form-field"><label>Division/Region</label><input type="text" id="setRegion"
+                        value="<?= htmlspecialchars($settings['region'] ?? '') ?>"></div>
+                <div class="form-field"><label>Principal / Head</label><input type="text" id="setPrincipal"
+                        value="<?= htmlspecialchars($settings['principal_name'] ?? '') ?>"></div>
+            </div>
+            <div class="form-field" style="margin-bottom:2rem;">
+                <label>SBFP Coordinator</label>
+                <input type="text" id="setCoordinator"
+                    value="<?= htmlspecialchars($settings['sbfp_coordinator'] ?? '') ?>">
+            </div>
+            <button class="btn-m3 btn-m3-primary" style="padding: 12px 32px; border-radius: 12px;"
+                onclick="saveGlobalSettings()">Update School Identity</button>
+        </div>
+    </div>
+</div>
 
 <script>
+    // Chart Initialization
+    const ctx = document.getElementById('allocationChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: <?= json_encode(array_keys($categories)) ?>,
+            datasets: [{
+                data: <?= json_encode(array_values($categories)) ?>,
+                backgroundColor: ['#0061ff', '#f59e0b', '#0ea5e9', '#64748b'],
+                borderWidth: 0,
+                cutout: '75%'
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { family: 'Outfit', weight: '600' } } } },
+            maintainAspectRatio: false
+        }
+    });
+
+    function switchTab(id) {
+        const url = new URL(window.location);
+        url.searchParams.set('tab', id);
+        window.history.pushState({}, '', url);
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === id));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + id));
+    }
+
     function toggleBudgetEdit() {
         const d = document.getElementById('budgetDisplay');
         const e = document.getElementById('budgetEdit');
-        if (d.style.display === 'none') {
-            d.style.display = 'block';
-            e.style.display = 'none';
-        } else {
-            d.style.display = 'none';
-            e.style.display = 'block';
-        }
+        const isHidden = e.style.display === 'none';
+        d.style.display = isHidden ? 'none' : 'block';
+        e.style.display = isHidden ? 'block' : 'none';
+    }
+
+    async function toggleUserStatus(id) {
+        if (!confirm('Toggle status for this account?')) return;
+        try {
+            const res = await fetch('api_permanent_delete_user.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: id, toggle_only: true })
+            });
+            const d = await res.json();
+            if (d.success) location.reload();
+            else alert(d.message);
+        } catch (e) { alert('Error updating status.'); }
     }
 
     async function saveBudgetSettings() {
         const alloc = document.getElementById('setAllocBudget').value;
-        const daily = document.getElementById('setDailyLimit').value;
-        if (!alloc || !daily) return;
+        const daily = <?= $daily_limit ?>; // Preserve daily limit for now
         try {
             const res = await fetch('api_save_settings.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    total_allocated_budget: alloc,
-                    total_daily_budget: daily
-                })
+                body: JSON.stringify({ total_allocated_budget: alloc })
             });
-            const data = await res.json();
-            if (data.success) location.reload();
-            else alert(data.message);
-        } catch (e) { alert('Failed to save settings.'); }
-    }
-
-    // Allocation Chart
-    document.addEventListener('DOMContentLoaded', () => {
-        try {
-            const canvas = document.getElementById('allocationChart');
-            if (canvas) {
-                const ctxAlloc = canvas.getContext('2d');
-                new Chart(ctxAlloc, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Food Supplies', 'Labor Costs', 'Logistics', 'Misc'],
-                        datasets: [{
-                            data: [<?= $categories['Food Supplies'] ?>, <?= $categories['Labor Costs'] ?>, <?= $categories['Logistics'] ?>, <?= $categories['Misc'] ?>],
-                            backgroundColor: ['#3b82f6', '#10b981', '#8b5cf6', '#f43f5e'],
-                            borderWidth: 0,
-                            cutout: '75%'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } }
-                    }
-                });
-            }
-        } catch (e) { console.error('Chart failed:', e); }
-    });
-
-    function switchTab(id) {
-        document.querySelectorAll('.tab-btn').forEach(b => {
-            b.classList.remove('active');
-            if (b.getAttribute('data-tab') === id) b.classList.add('active');
-        });
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        const target = document.getElementById('tab-' + id);
-        if (target) target.classList.add('active');
-    }
-
-    function openUploadModal() {
-        const body = `
-            <div class="input-group"><label>Evidence Photo</label><input type="file" id="upFile" accept="image/*" style="width:100%;"></div>
-            <div class="input-group"><label>Service Date</label><input type="date" id="upDate" value="<?= date('Y-m-d') ?>" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px;"></div>
-            <div class="input-group"><label>Context Description</label><input type="text" id="upDesc" placeholder="e.g., Preparing 150 servings of Sopas..." style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px;"></div>
-        `;
-        AlgoModal.show({
-            title: 'Add Operational Evidence',
-            body: body,
-            footer: `<button class="btn-m3 btn-m3-outline" onclick="AlgoModal.close()">Cancel</button><button class="btn-m3 btn-m3-primary" onclick="runUpload()">Upload & Tag</button>`
-        });
-    }
-
-    async function runUpload() {
-        const file = document.getElementById('upFile').files[0];
-        const date = document.getElementById('upDate').value;
-        const desc = document.getElementById('upDesc').value;
-        if (!file) return AlgoModal.alert('Missing Input', 'Please select a photo.');
-
-        AlgoModal.close();
-        const fd = new FormData();
-        fd.append('photo', file);
-        fd.append('tagged_date', date);
-        fd.append('description', desc);
-
-        try {
-            const res = await fetch('api_upload_kitchen_v2.php', { method: 'POST', body: fd });
-            const data = await res.json();
-            if (data.success) location.reload(); else AlgoModal.alert('Upload Error', data.message);
-        } catch (e) { }
+            const d = await res.json();
+            if (d.success) location.reload();
+            else alert(d.message);
+        } catch (e) { alert('Network error'); }
     }
 
     async function submitLog() {
         const amount = document.getElementById('logAmount').value;
         const category = document.getElementById('logCategory').value;
-        const description = document.getElementById('logDesc').value;
-        if (!amount || amount <= 0) return AlgoModal.alert('Invalid Amount', 'Please enter a valid amount.');
-        try {
-            const res = await fetch('api_log_budget.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, category, description }) });
-            const data = await res.json();
-            if (data.success) location.reload(); else AlgoModal.alert('Error', data.message);
-        } catch (e) { }
-    }
-
-    // User Management Functions
-    async function createUser() {
-        const name = document.getElementById('newUserName').value;
-        const pass = document.getElementById('newUserPass').value;
-        const role = document.getElementById('newUserRole').value;
-        
-        if (!name || !pass) return alert('Please enter both name and password.');
+        const desc = document.getElementById('logDesc').value;
+        if (!amount || !desc) return await AlgoModal.alert('Incomplete Form', 'Please complete the log form.');
 
         try {
-            const res = await fetch('api_add_user.php', {
+            const res = await fetch('api_log_budget.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ faculty_name: name, password: pass, role: role })
+                body: JSON.stringify({ amount, category, description: desc })
             });
             const d = await res.json();
-            if (d.success) {
-                location.reload();
-            } else {
-                alert(d.message);
-            }
-        } catch (e) {
-            alert('Failed to connect to server.');
-        }
+            if (d.success) location.reload();
+            else await AlgoModal.alert('Log Error', d.message);
+        } catch (e) { await AlgoModal.alert('System Error', 'Error logging data.'); }
     }
 
-    async function deleteUser(id) {
-        if (!confirm('Are you sure you want to change the access status of this account?')) return;
-        
+    function openEditLogModal(log) {
+        document.getElementById('editLogId').value = log.id;
+        document.getElementById('editLogAmount').value = log.amount;
+        document.getElementById('editLogCategory').value = log.category;
+        document.getElementById('editLogDesc').value = log.description;
+        document.getElementById('editLogModal').classList.add('active');
+    }
+
+    async function submitEditLog() {
+        const log_id = document.getElementById('editLogId').value;
+        const amount = document.getElementById('editLogAmount').value;
+        const category = document.getElementById('editLogCategory').value;
+        const description = document.getElementById('editLogDesc').value;
+
+        if (!amount || !description) return await AlgoModal.alert('Incomplete Form', 'Please complete the log form.');
+
         try {
-            const res = await fetch('api_delete_user.php', {
+            const res = await fetch('api_edit_log.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: id })
+                body: JSON.stringify({ log_id, amount, category, description })
             });
             const d = await res.json();
-            if (d.success) {
-                location.reload();
-            } else {
-                alert(d.message);
-            }
-        } catch (e) {
-            alert('Failed to connect to server.');
-        }
+            if (d.success) location.reload();
+            else await AlgoModal.alert('Edit Error', d.message);
+        } catch (e) { await AlgoModal.alert('System Error', 'Error editing log.'); }
     }
 
-    async function permanentDeleteUser(id) {
-        if (!confirm('CRITICAL WARNING: Are you sure you want to PERMANENTLY DELETE this account? This cannot be undone.')) return;
-        
+    async function deleteLog(log_id) {
+        if (!await AlgoModal.confirm("Delete Log", "Are you sure you want to permanently delete this expenditure log?")) return;
         try {
-            const res = await fetch('api_permanent_delete_user.php', {
+            const res = await fetch('api_delete_log.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: id })
+                body: JSON.stringify({ log_id })
             });
             const d = await res.json();
-            if (d.success) {
-                location.reload();
-            } else {
-                alert(d.message);
-            }
-        } catch (e) {
-            alert('Failed to connect to server.');
-        }
+            if (d.success) location.reload();
+            else await AlgoModal.alert('Deletion Error', d.message || 'Failed to delete log.');
+        } catch (e) { await AlgoModal.alert('System Error', 'Error deleting log.'); }
     }
 
-    // Global Settings Functions
     async function saveGlobalSettings() {
         const payload = {
             school_name: document.getElementById('setSchoolName').value,
@@ -746,7 +646,6 @@ $users_list = $conn->query("SELECT user_id, faculty_name, role, status FROM user
             principal_name: document.getElementById('setPrincipal').value,
             sbfp_coordinator: document.getElementById('setCoordinator').value
         };
-
         try {
             const res = await fetch('api_save_settings.php', {
                 method: 'POST',
@@ -754,28 +653,56 @@ $users_list = $conn->query("SELECT user_id, faculty_name, role, status FROM user
                 body: JSON.stringify(payload)
             });
             const d = await res.json();
-            if (d.success) {
-                AlgoModal.alert('Settings Saved', 'School identity parameters updated successfully.');
-                setTimeout(() => location.reload(), 1500);
-            } else { alert(d.message); }
+            if (d.success) alert('Settings updated successfully!');
+            else alert(d.message);
         } catch (e) { alert('Network error.'); }
     }
 
-    function switchTab(id) {
-        // Update URL without refreshing to persist tab on reload
-        const url = new URL(window.location);
-        url.searchParams.set('tab', id);
-        window.history.pushState({}, '', url);
-
-        document.querySelectorAll('.tab-btn').forEach(b => {
-            b.classList.remove('active');
-            if (b.getAttribute('data-tab') === id) b.classList.add('active');
-        });
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        const target = document.getElementById('tab-' + id);
-        if (target) target.classList.add('active');
+    async function permanentDeleteUser(id) {
+        if (!confirm('CRITICAL: Permanently delete this account?')) return;
+        try {
+            const res = await fetch('api_permanent_delete_user.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: id })
+            });
+            const d = await res.json();
+            if (d.success) location.reload();
+            else alert(d.message);
+        } catch (e) { alert('Error deleting user.'); }
     }
-
 </script>
 
 <?php require_once '../../includes/footer.php'; ?>
+
+<!-- Edit Log Modal -->
+<div class="modal-overlay" id="editLogModal">
+    <div class="modal" style="max-width: 500px; width: 95%;">
+        <h2 class="modal-title">Edit Expenditure Log</h2>
+        <div>
+            <input type="hidden" id="editLogId">
+            <div class="form-grid">
+                <div class="form-field">
+                    <label>Amount (PHP)</label>
+                    <input type="number" id="editLogAmount" step="0.01">
+                </div>
+                <div class="form-field">
+                    <label>Category</label>
+                    <select id="editLogCategory">
+                        <option>Labor Costs</option>
+                        <option>Logistics</option>
+                        <option>Misc</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-field" style="margin-bottom:1.5rem;">
+                <label>Description</label>
+                <input type="text" id="editLogDesc">
+            </div>
+            <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:1rem;">
+                <button class="btn-m3 btn-m3-outline" onclick="document.getElementById('editLogModal').classList.remove('active')">Cancel</button>
+                <button class="btn-m3 btn-m3-primary" onclick="submitEditLog()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>

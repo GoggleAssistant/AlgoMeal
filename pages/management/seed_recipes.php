@@ -2,6 +2,12 @@
 // seed_recipes.php
 require_once '../../db.php';
 
+session_start();
+$role = $_SESSION['role'] ?? 'Guest';
+if ($role !== 'Admin' && $role !== 'Super Admin') {
+    die("Unauthorized access. Admin privileges required.");
+}
+
 $recipes = [
     [
         'id' => 'R009',

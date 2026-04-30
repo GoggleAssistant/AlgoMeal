@@ -86,7 +86,7 @@ $isAdmin = ($role === 'Admin' || $role === 'Super Admin');
     </div>
 
     <!-- Top Level Partitions -->
-    <div style="display:flex; gap:1rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border);">
+    <div style="display:flex; gap:1.5rem; margin-top: 2rem; margin-bottom: 2rem; border-bottom: 2px solid var(--border);">
         <button id="tabCoreMeals" class="tab-btn active" onclick="switchPartition('Meals')">
             <span class="material-icons" style="font-size:18px;">restaurant</span> Core Meals
         </button>

@@ -146,6 +146,17 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         }
     }
 
+    function showLogoutModal() {
+        AlgoModal.show({
+            title: 'Confirm Logout',
+            body: '<p class="modal-text">Are you sure you want to end your session and return to the login screen?</p>',
+            footer: `
+                <button class="btn btn-outline" onclick="AlgoModal.close()">Cancel</button>
+                <a href="../../logout.php" class="btn btn-confirm">Logout</a>
+            `
+        });
+    }
+
     function showAccountSettingsModal() {
         const body = `
             <div style="margin-bottom: 1rem;">
