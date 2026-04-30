@@ -1,10 +1,16 @@
 <?php require_once '../../includes/header.php'; ?>
 <?php require_once '../../includes/sidebar.php'; ?>
 <?php
-$page_title = 'System Management';
+$page_title = 'Administrative Management';
 require_once '../../includes/topbar.php';
 require_once '../../db.php';
-$isAdmin = ($role === 'Admin');
+
+// Strict Admin Check
+if ($role !== 'Admin' && $role !== 'Super Admin') {
+    echo "<div class='content'><div class='alert alert-error'>Access Denied: Administrative privileges required.</div></div>";
+    require_once '../../includes/footer.php';
+    exit;
+}
 
 
 // Fetch Settings
@@ -34,6 +40,9 @@ while ($row = $res_cat->fetch_assoc()) {
 
 // Kitchen Documentation
 $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_documentation kd LEFT JOIN users u ON kd.uploaded_by = u.user_id ORDER BY kd.tagged_date DESC, kd.created_at DESC");
+
+// Fetch Users for Account Management
+$users_list = $conn->query("SELECT user_id, faculty_name, role, status FROM users ORDER BY role ASC, faculty_name ASC");
 
 ?>
 
@@ -285,8 +294,8 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
 <div class="content">
     <div class="mgmt-header no-print">
         <div class="mgmt-title">
-            <h2>Administrative Control Hub</h2>
-            <p>Strategic management of fiscal, operational, and documentation artifacts.</p>
+            <h2>Administrative Management Hub</h2>
+            <p>Fiscal control, user accounts, and system configuration tools.</p>
         </div>
         <div style="display:flex; gap:0.5rem;">
             <button class="btn-m3 btn-m3-outline" onclick="window.print()"><span class="material-icons">print</span>
@@ -296,31 +305,30 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
 
     <div class="mgmt-tabs no-print">
         <button
-            class="tab-btn <?= (!isset($_GET['tab']) || $_GET['tab'] == 'fiscal') && !isset($_GET['page_offset']) ? 'active' : '' ?>"
+            class="tab-btn <?= (!isset($_GET['tab']) || $_GET['tab'] == 'fiscal') ? 'active' : '' ?>"
             data-tab="fiscal" onclick="switchTab('fiscal')">FISCAL CONTROL</button>
-        <button class="tab-btn <?= (isset($_GET['tab']) && $_GET['tab'] == 'docs') ? 'active' : '' ?>" data-tab="docs"
-            onclick="switchTab('docs')">OPERATIONAL DOCS</button>
-        <button class="tab-btn <?= (isset($_GET['tab']) && $_GET['tab'] == 'sbfp1') ? 'active' : '' ?>" data-tab="sbfp1"
-            onclick="switchTab('sbfp1')">SBFP FORM 1</button>
-        <button
-            class="tab-btn <?= (isset($_GET['page_offset']) || (isset($_GET['tab']) && $_GET['tab'] == 'attendance')) ? 'active' : '' ?>"
-            data-tab="attendance" data-manual="true" onclick="switchTab('attendance')">ATTENDANCE GRID</button>
-    </div> <!-- TAB: FISCAL -->
-    <div id="tab-fiscal"
-        class="tab-content <?= (!isset($_GET['tab']) || $_GET['tab'] == 'fiscal') && !isset($_GET['page_offset']) ? 'active' : '' ?>">
+        <button class="tab-btn <?= (isset($_GET['tab']) && $_GET['tab'] == 'users') ? 'active' : '' ?>" data-tab="users"
+            onclick="switchTab('users')">USER ACCOUNTS</button>
+        <button class="tab-btn <?= (isset($_GET['tab']) && $_GET['tab'] == 'settings') ? 'active' : '' ?>" data-tab="settings"
+            onclick="switchTab('settings')">SYSTEM SETTINGS</button>
+    </div>
+    <?php 
+    $activeTab = $_GET['tab'] ?? 'fiscal';
+    ?>
+
+    <!-- TAB: FISCAL -->
+    <?php if ($role === 'Admin' || $role === 'Super Admin'): ?>
+    <div id="tab-fiscal" class="tab-content <?= ($activeTab == 'fiscal') ? 'active' : '' ?>">
         <div class="kpi-row no-print">
             <div class="kpi-card" style="min-height: 140px;">
                 <div class="kpi-label" style="display:flex; justify-content:space-between; align-items:center;">
                     Strategic Allocation
-                    <?php if ($isAdmin): ?>
                     <button onclick="toggleBudgetEdit()" style="background:none; border:none; color:var(--primary); cursor:pointer;"><span class="material-icons" style="font-size:16px;">edit</span></button>
-                    <?php endif; ?>
                 </div>
                 <div id="budgetDisplay">
                     <div class="kpi-value">&#8369;<?= number_format($allocated_budget, 2) ?></div>
                     <div class="kpi-subtext">Base funding cap for the school year.</div>
                 </div>
-                <?php if ($isAdmin): ?>
                 <div id="budgetEdit" style="display:none; margin-top:0.5rem;">
                     <div style="margin-bottom:0.5rem;">
                         <label style="font-size:0.65rem; color:var(--text-muted); font-weight:700;">Total Allocation</label>
@@ -335,7 +343,6 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
                         <button class="tab-btn" onclick="toggleBudgetEdit()" style="padding:4px 12px; font-size:0.7rem; border-radius:100px;">Cancel</button>
                     </div>
                 </div>
-                <?php endif; ?>
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Cumulative Spend</div>
@@ -364,23 +371,21 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
                     <div class="card-header"><span class="material-icons">receipt_long</span>
                         <h3>Manual Log</h3>
                     </div>
-                    <?php if ($isAdmin): ?>
-                        <div class="logging-form">
-                            <div class="form-grid">
-                                <div class="form-field"><label>Amount</label><input type="number" id="logAmount"
-                                        placeholder="0.00"></div>
-                                <div class="form-field"><label>Category</label><select id="logCategory">
-                                        <option>Labor Costs</option>
-                                        <option>Logistics</option>
-                                        <option>Misc</option>
-                                    </select></div>
-                            </div>
-                            <div class="form-field" style="margin-bottom:1rem;"><label>Description</label><input type="text"
-                                    id="logDesc"></div>
-                            <button class="btn-m3 btn-m3-primary" style="width:100%; border-radius: 8px;"
-                                onclick="submitLog()">Record Log</button>
+                    <div class="logging-form">
+                        <div class="form-grid">
+                            <div class="form-field"><label>Amount</label><input type="number" id="logAmount"
+                                    placeholder="0.00"></div>
+                            <div class="form-field"><label>Category</label><select id="logCategory">
+                                    <option>Labor Costs</option>
+                                    <option>Logistics</option>
+                                    <option>Misc</option>
+                                </select></div>
                         </div>
-                    <?php endif; ?>
+                        <div class="form-field" style="margin-bottom:1rem;"><label>Description</label><input type="text"
+                                id="logDesc"></div>
+                        <button class="btn-m3 btn-m3-primary" style="width:100%; border-radius: 8px;"
+                            onclick="submitLog()">Record Log</button>
+                    </div>
                 </div>
             </div>
             <div class="dashboard-card">
@@ -415,292 +420,140 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
         </div>
     </div> <!-- END TAB: FISCAL -->
 
-    <!-- TAB: DOCS -->
-    <div id="tab-docs" class="tab-content <?= (isset($_GET['tab']) && $_GET['tab'] == 'docs') ? 'active' : '' ?>">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;"
-            class="no-print">
-            <h3 style="margin:0;">Kitchen Photo Evidence</h3>
-            <button class="btn-m3 btn-m3-primary" onclick="openUploadModal()"><span
-                    class="material-icons">add_a_photo</span> Add Evidence</button>
-        </div>
 
-        <div class="doc-grid">
-            <?php while ($d = $docs->fetch_assoc()): ?>
-                <div class="doc-card">
-                    <img src="../../<?= $d['photo_path'] ?>" class="doc-img">
-                    <div class="doc-meta">
-                        <div class="doc-date"><?= date('F d, Y', strtotime($d['tagged_date'])) ?></div>
-                        <div class="doc-desc"><?= htmlspecialchars($d['caption']) ?></div>
-                        <div class="doc-uploader"><span class="material-icons" style="font-size:12px;">person</span>
-                            Uploader: <?= $d['uploader'] ?? 'Staff' ?></div>
+    <!-- TAB: SETTINGS -->
+    <div id="tab-settings" class="tab-content <?= ($activeTab == 'settings') ? 'active' : '' ?>">
+        <div style="margin-bottom:1.5rem;">
+            <h3 style="margin:0;">Global System Settings</h3>
+            <p style="font-size:0.8rem; color:var(--text-muted);">Configure school identity and form defaults.</p>
+        </div>
+        <div class="dashboard-card" style="max-width: 800px;">
+            <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
+                <div class="form-field">
+                    <label>School Name</label>
+                    <input type="text" id="setSchoolName" value="<?= $settings['school_name'] ?? '' ?>" placeholder="e.g. Mabini Elementary School">
+                </div>
+                <div class="form-field">
+                    <label>School ID</label>
+                    <input type="text" id="setSchoolId" value="<?= $settings['school_id'] ?? '' ?>" placeholder="6-digit ID">
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-field">
+                    <label>District</label>
+                    <input type="text" id="setDistrict" value="<?= $settings['district'] ?? '' ?>">
+                </div>
+                <div class="form-field">
+                    <label>Division/Region</label>
+                    <input type="text" id="setRegion" value="<?= $settings['region'] ?? '' ?>">
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-field">
+                    <label>Principal / School Head</label>
+                    <input type="text" id="setPrincipal" value="<?= $settings['principal_name'] ?? '' ?>">
+                </div>
+                <div class="form-field">
+                    <label>SBFP Coordinator</label>
+                    <input type="text" id="setCoordinator" value="<?= $settings['sbfp_coordinator'] ?? '' ?>">
+                </div>
+            </div>
+            <div style="margin-top:2rem; display:flex; justify-content:flex-end;">
+                <button class="btn-m3 btn-m3-primary" onclick="saveGlobalSettings()"><span class="material-icons">save</span> Save Identity Parameters</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: USERS -->
+    <div id="tab-users" class="tab-content <?= ($activeTab == 'users') ? 'active' : '' ?>">
+        <div style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem;">
+            <!-- User List -->
+            <div class="dashboard-card">
+                <div class="card-header"><span class="material-icons">person</span><h3>System Personnel</h3></div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--border);">
+                            <th style="text-align:left; padding:1rem;">Name / Username</th>
+                            <th style="text-align:left; padding:1rem;">Access Level</th>
+                            <th style="text-align:right; padding:1rem;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while($u = $users_list->fetch_assoc()): ?>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding:1rem;">
+                                <div style="font-weight:700; color:var(--text-main);"><?= htmlspecialchars($u['faculty_name']) ?></div>
+                                <div style="font-size:0.75rem; color:var(--text-muted);">UID: #<?= $u['user_id'] ?></div>
+                            </td>
+                            <td style="padding:1rem;">
+                                <?php 
+                                    $badgeStyle = "background:#f1f5f9; color:#64748b;";
+                                    if($u['role'] === 'Super Admin') $badgeStyle = "background:#eff6ff; color:#1d4ed8;";
+                                    else if($u['role'] === 'Admin') $badgeStyle = "background:#fefce8; color:#a16207;";
+                                ?>
+                                <span style="padding:4px 10px; border-radius:100px; font-size:0.7rem; font-weight:800; text-transform:uppercase; <?= $badgeStyle ?>">
+                                    <?= htmlspecialchars($u['role']) ?>
+                                </span>
+                                <?php if($u['status'] === 'Disabled'): ?>
+                                    <span style="margin-left: 6px; padding:4px 10px; border-radius:100px; font-size:0.7rem; font-weight:800; text-transform:uppercase; background:#fee2e2; color:#b91c1c;">
+                                        DISABLED
+                                    </span>
+                                <?php endif; ?>
+                            </td>
+                            <td style="padding:1rem; text-align:right;">
+                                <?php if($role === 'Super Admin' && $u['user_id'] != $_SESSION['user_id']): ?>
+                                    <?php if($u['status'] === 'Disabled'): ?>
+                                        <button class="btn-m3 btn-m3-tonal" style="padding: 6px 12px; font-size: 0.75rem;" title="Restore Access" onclick="deleteUser(<?= $u['user_id'] ?>)">
+                                            <span class="material-icons" style="font-size:14px;">how_to_reg</span> Restore Access
+                                        </button>
+                                    <?php else: ?>
+                                        <button class="btn-m3 btn-m3-danger" style="padding: 6px 12px; font-size: 0.75rem;" title="Revoke Access" onclick="deleteUser(<?= $u['user_id'] ?>)">
+                                            <span class="material-icons" style="font-size:14px;">no_accounts</span> Revoke Access
+                                        </button>
+                                    <?php endif; ?>
+                                    <button class="btn-m3 btn-m3-outline" style="padding: 6px 12px; font-size: 0.75rem; margin-left: 0.5rem; color: #b91c1c; border-color: #fca5a5;" title="Permanent Delete" onclick="permanentDeleteUser(<?= $u['user_id'] ?>)">
+                                        <span class="material-icons" style="font-size:14px;">delete_forever</span>
+                                    </button>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Create Account -->
+            <div class="dashboard-card">
+                <div class="card-header"><span class="material-icons">person_add</span><h3>Provision Account</h3></div>
+                <div style="display:flex; flex-direction:column; gap:1rem;">
+                    <div class="form-field">
+                        <label>Full Name / Username</label>
+                        <input type="text" id="newUserName" placeholder="Enter display name">
                     </div>
-                </div>
-            <?php endwhile;
-            if ($docs->num_rows === 0): ?>
-                <div style="grid-column: 1/-1; text-align:center; padding:5rem; color:var(--text-muted);">No operational
-                    evidence uploaded yet.</div>
-            <?php endif; ?>
-        </div>
-    </div> <!-- END TAB: DOCS -->
-
-    <!-- TAB: SBFP FORM 1 -->
-    <div id="tab-sbfp1" class="tab-content <?= (isset($_GET['tab']) && $_GET['tab'] == 'sbfp1') ? 'active' : '' ?>">
-        <div class="mgmt-header no-print" style="margin-bottom: 2rem;">
-            <div class="mgmt-title">
-                <h3
-                    style="margin:0; color:var(--primary); font-family: 'Outfit', sans-serif; font-weight: 800; letter-spacing: -0.02em;">
-                    SBFP FORM 1: Master List of Beneficiaries</h3>
-                <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">DepEd Standard Format for
-                    Beneficiary Documentation.</p>
-            </div>
-            <div style="display:flex; gap: 0.75rem;">
-                <a href="api_export_sbfp1.php" class="btn-m3 btn-m3-tonal">
-                    <span class="material-icons">description</span>
-                    Export to Excel
-                </a>
-                <button class="btn-m3 btn-m3-outline" onclick="printFormLandscape()">
-                    <span class="material-icons">print</span>
-                    Print Full Form (Landscape)
-                </button>
-            </div>
-        </div>
-
-        <div class="dashboard-card" style="padding: 0; overflow-x: auto; border: 2px solid #000; border-radius: 0;">
-            <table
-                style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: 'Inter', sans-serif; white-space: nowrap; border: 1px solid #000;">
-                <thead style="background: #f1f5f9; border-bottom: 2px solid #000;">
-                    <tr style="text-align: center; text-transform: uppercase; font-weight: 800;">
-                        <th style="padding: 10px; border: 1px solid #000;">Name</th>
-                        <th style="padding: 10px; border: 1px solid #000;">Sex</th>
-                        <th style="padding: 10px; border: 1px solid #000;">Grade /<br>Section</th>
-                        <th style="padding: 10px; border: 1px solid #000;">Date of Birth<br>(MM/DD/YYYY)</th>
-                        <th style="padding: 10px; border: 1px solid #000;">Date of Weighing
-                            /<br>Measuring<br>(MM/DD/YYYY)</th>
-                        <th style="padding: 10px; border: 1px solid #000;">Age in<br>Years / Months</th>
-                        <th style="padding: 10px; border: 1px solid #000;">Weight (kg)</th>
-                        <th style="padding: 10px; border: 1px solid #000;">Height (cm)</th>
-                        <th style="padding: 10px; border: 1px solid #000; background: #e2e8f0;" colspan="2">Nutritional
-                            Status (NS)</th>
-                        <th style="padding: 10px; border: 1px solid #000; background: #fff7ed;">BMI for 6 y.o.<br>and
-                            above<br>(yes or no)</th>
-                        <th style="padding: 10px; border: 1px solid #000;">Parent's<br>consent for milk?</th>
-                        <th style="padding: 10px; border: 1px solid #000;">Dewormed?</th>
-                        <th style="padding: 10px; border: 1px solid #000;">Consent for<br>Participation</th>
-                        <th style="padding: 10px; border: 1px solid #000;">In 4Ps<br>(yes or no)</th>
-                    </tr>
-                    <tr style="text-align: center; font-size: 9px; text-transform: uppercase;">
-                        <th colspan="8" style="background:transparent; border:none;"></th>
-                        <th style="padding: 5px; border: 1px solid #000;">BMI-A</th>
-                        <th style="padding: 5px; border: 1px solid #000;">HFA</th>
-                        <th colspan="5"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    $sql_f1 = "
-                            SELECT s.*, 
-                                nr.weight as w, 
-                                nr.height as h, 
-                                nr.nutritional_status as ns_bmi, 
-                                nr.hfa_status as ns_hfa, 
-                                nr.age_years as y, 
-                                nr.age_months as am, 
-                                nr.assessment_date as ad
-                            FROM student s
-                            LEFT JOIN nutritional_record nr ON nr.record_id = (
-                                SELECT MAX(record_id) FROM nutritional_record WHERE student_id = s.student_id
-                            )
-                            ORDER BY s.last_name, s.first_name
-                        ";
-                    $res_f1 = $conn->query($sql_f1);
-
-                    if ($res_f1 && $res_f1->num_rows > 0):
-                        while ($r = $res_f1->fetch_assoc()):
-                            $isSix = ($r['ad'] && $r['y'] >= 6) ? 'Yes' : ($r['ad'] ? 'No' : '--');
-                            ?>
-                            <tr style="border-bottom: 1px solid #000;">
-                                <td style="padding: 8px; border-right: 1px solid #000; font-weight: 700; color: #000;">
-                                    <?= htmlspecialchars($r['last_name'] . ', ' . $r['first_name']) ?></td>
-                                <td style="padding: 8px; border-right: 1px solid #000; text-align: center;">
-                                    <?= $r['sex'] == 'Female' ? 'F' : 'M' ?></td>
-                                <td style="padding: 8px; border-right: 1px solid #000; text-align: center;">
-                                    <?= $r['grade_level'] ?> / <?= $r['section'] ?></td>
-                                <td style="padding: 8px; border-right: 1px solid #000; text-align: center;">
-                                    <?= date('m/d/Y', strtotime($r['birth_date'])) ?></td>
-                                <td style="padding: 8px; border-right: 1px solid #000; text-align: center;">
-                                    <?= $r['ad'] ? date('m/d/Y', strtotime($r['ad'])) : '--' ?></td>
-                                <td style="padding: 8px; border-right: 1px solid #000; text-align: center; font-weight: 600;">
-                                    <?= $r['ad'] ? ($r['y'] . " Y / " . $r['am'] . " M") : '--' ?></td>
-                                <td style="padding: 8px; border-right: 1px solid #000; text-align: center;">
-                                    <?= $r['w'] ?: '--' ?></td>
-                                <td style="padding: 8px; border-right: 1px solid #000; text-align: center;">
-                                    <?= $r['h'] ?: '--' ?></td>
-                                <td
-                                    style="padding: 8px; border-right: 1px solid #000; text-align: center; font-weight: 700; color: var(--primary);">
-                                    <?= $r['ns_bmi'] ?: '--' ?></td>
-                                <td style="padding: 8px; border-right: 1px solid #000; text-align: center;">
-                                    <?= $r['ns_hfa'] ?: '--' ?></td>
-                                <td
-                                    style="padding: 8px; border-right: 1px solid #000; text-align: center; font-weight: 800; background: #fff7ed;">
-                                    <?= $isSix ?></td>
-                                <td
-                                    style="padding: 8px; border-right: 1px solid #000; text-align: center; font-weight: 700; color: <?= $r['parent_milk_consent'] ? '#15803d' : '#be123c' ?>;">
-                                    <?= $r['parent_milk_consent'] ? 'Yes' : 'No' ?></td>
-                                <td style="padding: 8px; border-right: 1px solid #000; text-align: center; font-weight: 700;">
-                                    <?= $r['deworming_status'] ? 'Yes' : 'No' ?></td>
-                                <td style="padding: 8px; border-right: 1px solid #000; text-align: center; font-weight: 700;">
-                                    <?= $r['participation_consent'] ? 'Yes' : 'No' ?></td>
-                                <td
-                                    style="padding: 8px; text-align: center; font-weight: 700; color: <?= $r['is_4ps_beneficiary'] ? '#15803d' : '#000' ?>;">
-                                    <?= $r['is_4ps_beneficiary'] ? 'Yes' : 'No' ?></td>
-                            </tr>
-                        <?php endwhile; else: ?>
-                        <tr>
-                            <td colspan="15" style="padding: 4rem; text-align: center; color: #94a3b8; font-weight: 700;">No
-                                student records identified. Please register students in the roster.</td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="print-footer no-screen" style="margin-top: 6rem; display: none;">
-            <div style="display: flex; justify-content: space-between; padding: 0 4rem;">
-                <div style="text-align: center; width: 300px;">
-                    <div style="border-bottom: 2px solid #000; margin-bottom: 10px; padding-top: 60px;"></div>
-                    <div style="font-size: 11px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase;">
-                        SBFP Coordinator / Teacher</div>
-                    <div style="font-size: 10px; color: #64748b;">Date Prepared</div>
-                </div>
-                <div style="text-align: center; width: 300px;">
-                    <div style="border-bottom: 2px solid #000; margin-bottom: 10px; padding-top: 60px;"></div>
-                    <div style="font-size: 11px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase;">
-                        School Head / Principal</div>
-                    <div style="font-size: 10px; color: #64748b;">Date Approved</div>
+                    <div class="form-field">
+                        <label>Initial Password</label>
+                        <input type="password" id="newUserPass" placeholder="••••••••">
+                    </div>
+                    <div class="form-field">
+                        <label>Access Role</label>
+                        <select id="newUserRole">
+                            <option value="Faculty">Faculty</option>
+                            <?php if($role === 'Super Admin'): ?>
+                                <option value="Admin">Administrator</option>
+                                <option value="Super Admin">Super Administrator</option>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+                    <button class="btn-m3 btn-m3-primary" style="width:100%; margin-top:1rem;" onclick="createUser()">
+                        <span class="material-icons">verified_user</span> Create Account
+                    </button>
                 </div>
             </div>
         </div>
+    </div>
+    <?php endif; ?>
 
-        <style>
-            @media print {
-                .tab-content { display: none !important; }
-                #tab-sbfp1 { 
-                    display: block !important; 
-                    width: 100% !important; 
-                    border: none !important; 
-                    transform: scale(0.85); 
-                    transform-origin: top left;
-                }
-                .tab-btn, .kpi-row, .mgmt-tabs, .sidebar, .topbar, .no-print, .mgmt-header { display: none !important; }
-                .dashboard-card { border: none !important; box-shadow: none !important; padding: 0 !important; }
-                .no-screen { display: block !important; }
-                body { background: white !important; font-family: 'Inter', sans-serif !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .content { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
-                table { border: 2px solid #000 !important; width: 100% !important; font-size: 9px !important; }
-                th, td { border: 1px solid #000 !important; padding: 3px !important; color: #000 !important; }
-                thead { background: #f1f5f9 !important; }
-                .print-footer { display: block !important; }
-            }
-        </style>
-    </div> <!-- END TAB: SBFP FORM 1 -->
-
-    <!-- TAB: ATTENDANCE -->
-    <div id="tab-attendance"
-        class="tab-content <?= (isset($_GET['tab']) && $_GET['tab'] == 'attendance') || isset($_GET['page_offset']) ? 'active' : '' ?>">
-        <?php
-        // Fetch ALL dates that were ACTUALLY VERIFIED AND SERVED chronologically
-        $days = [];
-        $dishes = [];
-        $res_served = $conn->query("
-                    SELECT dp.scheduled_date, ra.recipe_name AS meal_a, rb.recipe_name AS meal_b 
-                    FROM daily_meal_plans dp 
-                    LEFT JOIN recipes ra ON dp.meal_a_recipe_id = ra.recipe_id 
-                    LEFT JOIN recipes rb ON dp.meal_b_recipe_id = rb.recipe_id 
-                    WHERE dp.is_served = 1 
-                    ORDER BY dp.scheduled_date ASC
-                ");
-        while ($rd = $res_served->fetch_assoc()) {
-            $days[] = $rd['scheduled_date'];
-            $dish_name = $rd['meal_a'] ?: 'Unknown Dish';
-            if (!empty($rd['meal_b']))
-                $dish_name .= ' & ' . $rd['meal_b'];
-            $dishes[$rd['scheduled_date']] = $dish_name;
-        }
-
-        $meal_data = [];
-        if (!empty($days)) {
-            $d_in = implode("','", $days);
-            $res_meals = $conn->query("SELECT student_id, scheduled_date, feeding_status FROM meal_plan WHERE scheduled_date IN ('$d_in')");
-            while ($rm = $res_meals->fetch_assoc())
-                $meal_data[$rm['student_id']][$rm['scheduled_date']] = $rm['feeding_status'];
-        }
-
-        $res_stud_att = $conn->query("SELECT student_id, CONCAT(first_name, ' ', last_name) as full_name FROM student ORDER BY full_name");
-        ?>
-        <div class="no-print" style="margin-bottom:1.5rem;">
-            <h3 style="margin:0 0 0.25rem 0;">Attendance Record</h3>
-            <p style="margin:0; font-size:0.8rem; color:var(--text-muted);">Comprehensive tracking matrix of all
-                verified meals.</p>
-        </div>
-
-        <div class="no-print" style="margin-bottom:1.5rem; display:flex; justify-content:flex-end; gap: 0.75rem;">
-            <a href="api_export_attendance.php" class="btn-m3 btn-m3-tonal">
-                <span class="material-icons">table_view</span>
-                Export to Excel
-            </a>
-            <button class="btn-m3 btn-m3-outline" onclick="printRosterIsolated()"
-                style="background:white; color:var(--text-main);">
-                <span class="material-icons" style="font-size:18px; color:var(--primary);">print</span> 
-                Print Roster
-            </button>
-        </div>
-
-        <div class="attendance-grid"
-            style="overflow-x:auto; margin-bottom:2rem; border-radius:12px; border:1px solid var(--border);">
-            <table class="att-table" style="min-width: 100%;">
-                <thead>
-                    <tr>
-                        <th
-                            style="min-width:200px; border-left:none; vertical-align:bottom; position:sticky; left:0; background:#f8fafc; z-index:2; border-right:2px solid var(--border);">
-                            Student Name</th>
-                        <?php foreach ($days as $d): ?>
-                            <th style="vertical-align:bottom; min-width:140px; background:#f8fafc;">
-                                <div style="font-size:0.7rem; font-weight:800; color:var(--primary); margin-bottom:4px;">
-                                    <?= date('D, M d Y', strtotime($d)) ?></div>
-                                <div style="font-size:0.8rem; font-weight:700; color:var(--text-main); line-height:1.2;">
-                                    <?= htmlspecialchars($dishes[$d]) ?></div>
-                            </th>
-                        <?php endforeach; ?>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php while ($s = $res_stud_att->fetch_assoc()): ?>
-                        <tr>
-                            <td class="name"
-                                style="border-left:none; position:sticky; left:0; background:#ffffff; z-index:1; border-right:2px solid var(--border);">
-                                <?= htmlspecialchars($s['full_name']) ?></td>
-                            <?php foreach ($days as $d):
-                                $char = '--';
-                                $status = $meal_data[$s['student_id']][$d] ?? '';
-                                if ($status === 'Served') {
-                                    $char = '<div style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#ecfdf5; color:#10b981; box-shadow:var(--shadow-sm);"><span class="material-icons" style="font-size:16px; font-weight:bold;">check</span></div>';
-                                } elseif ($status === 'Absent') {
-                                    $char = '<div style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#fef2f2; color:#ef4444; box-shadow:var(--shadow-sm);"><span class="material-icons" style="font-size:16px; font-weight:bold;">close</span></div>';
-                                }
-                                echo "<td style='background:#ffffff; text-align:center;'>$char</td>";
-                            endforeach; ?>
-                        </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
-        </div>
-
-        <?php if (empty($days)): ?>
-            <div
-                style="text-align:center; padding:3rem; border:1px dashed var(--border); border-radius:12px; color:var(--text-muted); font-weight:700;">
-                No meals have been verified and served yet.</div>
-        <?php endif; ?>
-    </div> <!-- END TAB: ATTENDANCE -->
+    <!-- DOCUMENTATION TABS REMOVED (Moved to documentation.php) -->
 </div> <!-- END .content --></div>
 
 
@@ -816,6 +669,111 @@ $docs = $conn->query("SELECT kd.*, u.faculty_name as uploader FROM kitchen_docum
             const data = await res.json();
             if (data.success) location.reload(); else AlgoModal.alert('Error', data.message);
         } catch (e) { }
+    }
+
+    // User Management Functions
+    async function createUser() {
+        const name = document.getElementById('newUserName').value;
+        const pass = document.getElementById('newUserPass').value;
+        const role = document.getElementById('newUserRole').value;
+        
+        if (!name || !pass) return alert('Please enter both name and password.');
+
+        try {
+            const res = await fetch('api_add_user.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ faculty_name: name, password: pass, role: role })
+            });
+            const d = await res.json();
+            if (d.success) {
+                location.reload();
+            } else {
+                alert(d.message);
+            }
+        } catch (e) {
+            alert('Failed to connect to server.');
+        }
+    }
+
+    async function deleteUser(id) {
+        if (!confirm('Are you sure you want to change the access status of this account?')) return;
+        
+        try {
+            const res = await fetch('api_delete_user.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: id })
+            });
+            const d = await res.json();
+            if (d.success) {
+                location.reload();
+            } else {
+                alert(d.message);
+            }
+        } catch (e) {
+            alert('Failed to connect to server.');
+        }
+    }
+
+    async function permanentDeleteUser(id) {
+        if (!confirm('CRITICAL WARNING: Are you sure you want to PERMANENTLY DELETE this account? This cannot be undone.')) return;
+        
+        try {
+            const res = await fetch('api_permanent_delete_user.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: id })
+            });
+            const d = await res.json();
+            if (d.success) {
+                location.reload();
+            } else {
+                alert(d.message);
+            }
+        } catch (e) {
+            alert('Failed to connect to server.');
+        }
+    }
+
+    // Global Settings Functions
+    async function saveGlobalSettings() {
+        const payload = {
+            school_name: document.getElementById('setSchoolName').value,
+            school_id: document.getElementById('setSchoolId').value,
+            district: document.getElementById('setDistrict').value,
+            region: document.getElementById('setRegion').value,
+            principal_name: document.getElementById('setPrincipal').value,
+            sbfp_coordinator: document.getElementById('setCoordinator').value
+        };
+
+        try {
+            const res = await fetch('api_save_settings.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const d = await res.json();
+            if (d.success) {
+                AlgoModal.alert('Settings Saved', 'School identity parameters updated successfully.');
+                setTimeout(() => location.reload(), 1500);
+            } else { alert(d.message); }
+        } catch (e) { alert('Network error.'); }
+    }
+
+    function switchTab(id) {
+        // Update URL without refreshing to persist tab on reload
+        const url = new URL(window.location);
+        url.searchParams.set('tab', id);
+        window.history.pushState({}, '', url);
+
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('active');
+            if (b.getAttribute('data-tab') === id) b.classList.add('active');
+        });
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        const target = document.getElementById('tab-' + id);
+        if (target) target.classList.add('active');
     }
 
 </script>

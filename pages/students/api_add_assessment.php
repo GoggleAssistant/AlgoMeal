@@ -5,15 +5,16 @@ require_once '../../includes/bmi_helper.php';
 
 header('Content-Type: application/json');
 
-if (($_SESSION['role'] ?? '') !== 'Admin') {
-    echo json_encode(['success' => false, 'error' => 'Unauthorized: Admins only.']);
+$allowed_roles = ['Faculty', 'Admin', 'Super Admin'];
+if (!in_array($_SESSION['role'] ?? '', $allowed_roles)) {
+    echo json_encode(['success' => false, 'error' => 'Unauthorized access.']);
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $student_id = $_POST['student_id'] ?? '';
-    $height = (float)($_POST['height'] ?? 0);
-    $weight = (float)($_POST['weight'] ?? 0);
+    $height = (float) ($_POST['height'] ?? 0);
+    $weight = (float) ($_POST['weight'] ?? 0);
     $assessment_date = $_POST['assessment_date'] ?? date('Y-m-d');
     $created_by = $_SESSION['user_id'] ?? 1;
 
@@ -36,8 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt_b->bind_param("s", $student_id);
     $stmt_b->execute();
     $s_data = $stmt_b->get_result()->fetch_assoc();
-    
-    $age_y = 0; $age_m = 0;
+
+    $age_y = 0;
+    $age_m = 0;
     if ($s_data) {
         $dob = new DateTime($s_data['birth_date']);
         $ref = new DateTime($assessment_date);
@@ -52,7 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // 1. Insert Record
         $stmt = $conn->prepare("INSERT INTO nutritional_record (student_id, created_by, height, weight, bmi, nutritional_status, assessment_date, age_years, age_months) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("sidddssii", $student_id, $created_by, $height, $weight, $bmi, $status, $assessment_date, $age_y, $age_m);
-        if(!$stmt->execute()) throw new Exception("Assessment log failed.");
+        if (!$stmt->execute())
+            throw new Exception("Assessment log failed.");
 
         // 2. Sync Student Target Weights
         $upd = $conn->prepare("UPDATE student SET min_target_weight = ?, max_target_weight = ? WHERE student_id = ?");

@@ -157,9 +157,12 @@ function generate_plan_for_date($conn, $target_date, $budget_limit)
 
     // 2. Get Students and their restrictions and current BMI/Nutritional Status to find Targets
     $q_students = "
-        SELECT s.student_id,
+        SELECT s.student_id, s.birth_date,
                GROUP_CONCAT(sam.restriction_id) as restriction_ids,
-               (SELECT nutritional_status FROM nutritional_record nr WHERE nr.student_id = s.student_id ORDER BY assessment_date DESC, record_id DESC LIMIT 1) as nut_status
+               (SELECT nutritional_status FROM nutritional_record nr WHERE nr.student_id = s.student_id ORDER BY assessment_date DESC, record_id DESC LIMIT 1) as nut_status,
+               (SELECT weight FROM nutritional_record nr WHERE nr.student_id = s.student_id ORDER BY assessment_date DESC, record_id DESC LIMIT 1) as weight,
+               (SELECT height FROM nutritional_record nr WHERE nr.student_id = s.student_id ORDER BY assessment_date DESC, record_id DESC LIMIT 1) as height,
+               (SELECT assessment_date FROM nutritional_record nr WHERE nr.student_id = s.student_id ORDER BY assessment_date DESC, record_id DESC LIMIT 1) as assessment_date
         FROM student s
         LEFT JOIN student_allergy_map sam ON s.student_id = sam.student_id
         GROUP BY s.student_id
@@ -168,6 +171,32 @@ function generate_plan_for_date($conn, $target_date, $budget_limit)
     $students = [];
     $underweight_count = 0;
     while ($row = $res_students->fetch_assoc()) {
+        // Dynamic WHO BMI Calculation matching Student Profile Logic
+        $is_over_healthy_bmi = false;
+        $weight = (float)($row['weight'] ?? 0);
+        $height = (float)($row['height'] ?? 0);
+        
+        if ($height > 0 && $weight > 0 && !empty($row['birth_date']) && !empty($row['assessment_date'])) {
+            $bmi = $weight / pow($height / 100, 2);
+            $dob = new DateTime($row['birth_date']);
+            $assess = new DateTime($row['assessment_date']);
+            $age_years = $dob->diff($assess)->days / 365.25;
+
+            $maxBMI = 24.9;
+            if ($age_years >= 5 && $age_years <= 19) {
+                $maxBMI = 17.0 + (($age_years - 5) * 0.55);
+            }
+
+            if ($bmi > $maxBMI) {
+                $is_over_healthy_bmi = true;
+            }
+        }
+
+        // Exclude dynamically obese/overweight students from the meal plan
+        if ($is_over_healthy_bmi || $row['nut_status'] === 'Overweight' || $row['nut_status'] === 'Obese') {
+            continue;
+        }
+
         $row['restriction_ids'] = $row['restriction_ids'] ? array_filter(explode(',', $row['restriction_ids'])) : [];
         if ($row['nut_status'] === 'Severely Wasted' || $row['nut_status'] === 'Wasted' || stripos($row['nut_status'], 'Underweight') !== false) {
             $underweight_count++;

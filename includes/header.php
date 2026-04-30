@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $username = $_SESSION['faculty_name'] ?? 'User';
-$role = 'Admin'; // Roles removed as per request
+$role = $_SESSION['role'] ?? 'Faculty'; 
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -168,6 +168,15 @@ $role = 'Admin'; // Roles removed as per request
         .nav-text {
             font-size: 0.95rem;
         }
+        
+        .nav-header {
+            padding: 1.5rem 1.75rem 0.5rem;
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
 
         .nav-logout {
             margin-top: 0;
@@ -183,19 +192,6 @@ $role = 'Admin'; // Roles removed as per request
             display: flex;
             align-items: center;
             gap: 1rem;
-        }
-
-        .sidebar-user-avatar-circle {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--secondary);
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1rem;
         }
 
         .sidebar-user-name {

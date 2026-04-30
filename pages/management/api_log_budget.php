@@ -3,8 +3,8 @@ session_start();
 require_once '../../db.php';
 header('Content-Type: application/json');
 
-if (($_SESSION['role'] ?? '') !== 'Admin') {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized: Administrator privileges required.']);
+if (($_SESSION['role'] ?? '') !== 'Admin' && ($_SESSION['role'] ?? '') !== 'Super Admin') {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized access.']);
     exit;
 }
 

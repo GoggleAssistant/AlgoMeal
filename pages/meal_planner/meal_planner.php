@@ -5,26 +5,9 @@
 $page_title = 'Command Planner';
 require_once '../../includes/topbar.php';
 require_once '../../db.php';
-$isAdmin = ($role === 'Admin');
+$isAdmin = ($role === 'Admin' || $role === 'Super Admin');
 
-// Budget Compliance Data
-$res_settings = $conn->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('total_allocated_budget','total_daily_budget')");
-$settings = [];
-while ($row = $res_settings->fetch_assoc())
-    $settings[$row['setting_key']] = $row['setting_value'];
-$allocated_budget = (float) ($settings['total_allocated_budget'] ?? 0);
-$daily_limit = (float) ($settings['total_daily_budget'] ?? 0);
-$meal_spent = (float) ($conn->query("SELECT COALESCE(SUM(mp.actual_cost),0) as t FROM meal_plan mp JOIN daily_meal_plans dmp ON mp.scheduled_date = dmp.scheduled_date WHERE dmp.is_served = 1")->fetch_assoc()['t']);
-$meal_estimated = (float) ($conn->query("SELECT COALESCE(SUM(mp.actual_cost),0) as t FROM meal_plan mp JOIN daily_meal_plans dmp ON mp.scheduled_date = dmp.scheduled_date WHERE dmp.is_served = 0")->fetch_assoc()['t']);
-$logs_spent = (float) ($conn->query("SELECT COALESCE(SUM(amount),0) as t FROM budget_logs")->fetch_assoc()['t']);
-$total_spent = $meal_spent + $logs_spent;
-$remaining = $allocated_budget - $total_spent;
-$pct = $allocated_budget > 0 ? min(100, round(($total_spent / $allocated_budget) * 100, 1)) : 0;
-$bar_color = $pct >= 90 ? '#ef4444' : ($pct >= 70 ? '#f59e0b' : '#10b981');
-$total_days_planned = (int) ($conn->query("SELECT COUNT(DISTINCT mp.scheduled_date) as c FROM meal_plan mp JOIN daily_meal_plans dmp ON mp.scheduled_date = dmp.scheduled_date WHERE dmp.is_served = 1")->fetch_assoc()['c']);
-$avg_daily_cost = $total_days_planned > 0 ? round($meal_spent / $total_days_planned, 2) : 0;
-$daily_status_color = ($daily_limit > 0 && $avg_daily_cost > $daily_limit) ? '#ef4444' : '#10b981';
-$daily_pct = $daily_limit > 0 ? min(100, round(($avg_daily_cost / $daily_limit) * 100, 1)) : 0;
+
 
 // Get Recipes
 $res_recipes = $conn->query("SELECT r.*, GROUP_CONCAT(DISTINCT dr.restriction_name) as allergens, GROUP_CONCAT(DISTINCT rat.restriction_id) as restriction_ids FROM recipes r LEFT JOIN recipe_allergen_tags rat ON r.recipe_id = rat.recipe_id LEFT JOIN dietary_restrictions dr ON rat.restriction_id = dr.restriction_id GROUP BY r.recipe_id ORDER BY r.recipe_name");
@@ -362,64 +345,8 @@ $recipes_json = json_encode($recipes);
 <div class="content">
     <div class="planner-grid">
 
-        <!-- BUDGET COMPLIANCE BAR -->
-        <div class="workspace-panel" style="padding: 1.25rem 1.75rem;" id="budgetBar">
 
-            <!-- Row 1: Total Allocation -->
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                <div style="display:flex; align-items:center; gap:0.6rem;">
-                    <span class="material-icons"
-                        style="color:<?= $bar_color ?>; font-size:18px;">account_balance_wallet</span>
-                    <span style="font-weight:800; font-size:0.8rem; color:var(--text-main);">Total Budget</span>
-                    <span class="budget-pct-badge"
-                        style="font-size:0.65rem; font-weight:700; background:<?= $pct >= 90 ? '#fee2e2' : ($pct >= 70 ? '#fef3c7' : '#d1fae5') ?>; color:<?= $bar_color ?>; padding:2px 8px; border-radius:20px;"><?= $pct ?>%
-                        Used</span>
-                </div>
-                <div style="display:flex; gap:1.5rem; font-size:0.75rem; font-weight:700;">
-                    <span style="color:var(--text-muted);">Allocated: <strong
-                            style="color:var(--text-main);">&#8369;<?= number_format($allocated_budget, 2) ?></strong></span>
-                    <span style="color:var(--text-muted);" title="Projected AI Cost for Active Unserved Plans">Est.
-                        Future Plans: <strong
-                            style="color:#f59e0b;">&#8369;<?= number_format($meal_estimated, 2) ?></strong></span>
-                    <span style="color:var(--text-muted);">Spent: <strong class="budget-spent-val"
-                            style="color:#ef4444;">&#8369;<?= number_format($total_spent, 2) ?></strong></span>
-                    <span style="color:var(--text-muted);">Remaining: <strong class="budget-remaining-val"
-                            style="color:<?= $bar_color ?>;">&#8369;<?= number_format($remaining, 2) ?></strong></span>
-                </div>
-            </div>
-            <div style="background:#f1f5f9; border-radius:100px; height:8px; overflow:hidden; margin-bottom:1rem;">
-                <div id="budgetBarFill"
-                    style="height:100%; width:<?= $pct ?>%; background:<?= $bar_color ?>; border-radius:100px; transition:width 0.6s ease;">
-                </div>
-            </div>
 
-            <!-- Row 2: Daily Budget Limit -->
-            <div
-                style="display:flex; justify-content:space-between; align-items:center; padding-top:0.75rem; border-top:1px dashed var(--border);">
-                <div style="display:flex; align-items:center; gap:0.6rem;">
-                    <span class="material-icons" style="color:<?= $daily_status_color ?>; font-size:18px;">today</span>
-                    <span style="font-weight:800; font-size:0.8rem; color:var(--text-main);">Daily Budget Limit</span>
-                    <?php if ($daily_limit > 0): ?>
-                        <span
-                            style="font-size:0.65rem; font-weight:700; background:<?= $avg_daily_cost > $daily_limit ? '#fee2e2' : '#d1fae5' ?>; color:<?= $daily_status_color ?>; padding:2px 8px; border-radius:20px;">
-                            <?= $avg_daily_cost > $daily_limit ? '⚠ Over Limit' : '✓ Within Limit' ?>
-                        </span>
-                    <?php endif; ?>
-                </div>
-                <div style="display:flex; gap:1.5rem; font-size:0.78rem; font-weight:700;">
-                    <?php if ($daily_limit > 0): ?>
-                        <span style="color:var(--text-muted);">Limit/Day: <strong
-                                style="color:var(--text-main);">&#8369;<?= number_format($daily_limit, 2) ?></strong></span>
-                        <span style="color:var(--text-muted);">Avg Cost/Day: <strong
-                                style="color:<?= $daily_status_color ?>;">&#8369;<?= number_format($avg_daily_cost, 2) ?></strong></span>
-                    <?php else: ?>
-                        <span style="color:var(--text-muted); font-style:italic;">No daily limit set &mdash; <a
-                                href="../management/management.php" style="color:var(--primary); font-weight:700;">Set in
-                                Management Hub</a></span>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
 
         <!-- MAIN WORKSPACE -->
         <div class="workspace-panel" id="mainWorkspace">
@@ -437,6 +364,28 @@ $recipes_json = json_encode($recipes);
                     </button>
                 </div>
                 <div style="display:flex; gap:0.75rem;" id="wsActions"></div>
+            </div>
+
+            <!-- Attendance Legend -->
+            <div style="border-bottom: 1px dashed var(--border); padding-bottom: 1.25rem; margin-bottom: 1.5rem; margin-top: 0.5rem; display: flex; gap: 2.5rem; flex-wrap: wrap; justify-content: center;">
+                <div style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
+                    <span class="material-icons" style="font-size:16px; color:#10b981;">done</span> Served
+                </div>
+                <div style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
+                    <span class="material-icons" style="font-size:16px; color:#ef4444;">close</span> Absent
+                </div>
+                <div style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
+                    <span class="material-icons" style="font-size:16px; color:#60a5fa;">water_drop</span> Milk Served
+                </div>
+                <div style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
+                    <span class="material-icons" style="font-size:16px; color:#94a3b8;">local_drink</span> No Milk
+                </div>
+                <div style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
+                    <span class="material-icons" style="font-size:16px; color:#f59e0b;">bakery_dining</span> Snack Served
+                </div>
+                <div style="display:flex; align-items:center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
+                    <span class="material-icons" style="font-size:16px; color:#94a3b8;">cookie</span> No Snack
+                </div>
             </div>
 
             <div class="workspace-body" id="wsBody">
@@ -617,13 +566,14 @@ $recipes_json = json_encode($recipes);
         function renderEmptyUI() {
             document.getElementById('wsStatus').innerHTML = '<span class="material-icons" style="font-size:14px; color:var(--error);">error_outline</span> Unplanned Strategy Area';
             document.getElementById('wsActions').innerHTML = `
-                <button class="btn-m3 btn-m3-primary" onclick="generateToday()"><span class="material-icons" style="font-size:18px;">auto_fix_high</span> Deploy AI Optimization</button>
+                <button class="btn-m3 btn-m3-primary" onclick="generateToday()"><span class="material-icons" style="font-size:18px;">auto_fix_high</span> Generate Meal Plan</button>
+                <button class="btn-m3 btn-m3-tonal" onclick="openBulkGenerateModal()"><span class="material-icons" style="font-size:18px;">auto_awesome</span> Bulk Generate Meal Plans</button>
             `;
             document.getElementById('wsBody').innerHTML = `
                 <div class="empty-state" style="padding: 10rem 0;">
-                    <span class="material-icons" style="font-size: 80px; color: var(--border); margin-bottom: 2rem; opacity: 0.4;">auto_fix_off</span>
-                    <h3 style="margin: 0; font-size: 1.5rem; color: var(--text-main); font-weight:900;">Mission Data Missing</h3>
-                    <p style="color: var(--text-muted); font-size: 1.1rem; margin-top:1rem; max-width: 450px;">This date has not been optimized yet. Click the deployment button above to activate the heuristic engine.</p>
+                    <span class="material-icons" style="font-size: 80px; color: var(--border); margin-bottom: 2rem; opacity: 0.4;">event_busy</span>
+                    <h3 style="margin: 0; font-size: 1.5rem; color: var(--text-main); font-weight:900;">No Plans For Today</h3>
+                    <p style="color: var(--text-muted); font-size: 1.1rem; margin-top:1rem; max-width: 450px;">This date has not been planned yet. Click the buttons above to generate the meal plans.</p>
                 </div>
             `;
         }

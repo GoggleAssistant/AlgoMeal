@@ -4,8 +4,8 @@ require_once '../../db.php';
 
 header('Content-Type: application/json');
 
-if (($_SESSION['role'] ?? '') !== 'Admin') {
-    echo json_encode(['success' => false, 'error' => 'Unauthorized: Administrator privileges required to manage student profiles.']);
+if (($_SESSION['role'] ?? '') !== 'Admin' && ($_SESSION['role'] ?? '') !== 'Super Admin') {
+    echo json_encode(['success' => false, 'error' => 'Unauthorized: Administrator privileges required.']);
     exit;
 }
 

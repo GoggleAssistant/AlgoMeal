@@ -3,7 +3,7 @@
 <?php
 $page_title = 'Recipe Database';
 require_once '../../includes/topbar.php';
-$isAdmin = ($role === 'Admin');
+$isAdmin = ($role === 'Admin' || $role === 'Super Admin');
 ?>
 
 <style>

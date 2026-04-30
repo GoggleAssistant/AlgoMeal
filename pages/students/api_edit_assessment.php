@@ -4,8 +4,9 @@ require_once '../../db.php';
 
 header('Content-Type: application/json');
 
-if (($_SESSION['role'] ?? '') !== 'Admin') {
-    echo json_encode(['success' => false, 'error' => 'Unauthorized: Admins only.']);
+$allowed_roles = ['Faculty', 'Admin', 'Super Admin'];
+if (!in_array($_SESSION['role'] ?? '', $allowed_roles)) {
+    echo json_encode(['success' => false, 'error' => 'Unauthorized access.']);
     exit;
 }
 
@@ -24,13 +25,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_once '../../includes/bmi_helper.php';
     $height_m = $height / 100;
     $bmi = $weight / ($height_m * $height_m);
-    
+
     $status = getNutritionalStatus($bmi);
 
     $stmt = $conn->prepare("UPDATE nutritional_record SET height = ?, weight = ?, bmi = ?, nutritional_status = ?, assessment_date = ? WHERE record_id = ?");
-    if($stmt) {
+    if ($stmt) {
         $stmt->bind_param("dddss i", $height, $weight, $bmi, $status, $date, $record_id);
-        if($stmt->execute()) {
+        if ($stmt->execute()) {
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'error' => 'Update failed.']);

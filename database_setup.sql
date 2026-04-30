@@ -412,7 +412,8 @@ CREATE TABLE `users` (
   `user_id` int(11) NOT NULL AUTO_INCREMENT,
   `faculty_name` varchar(100) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
-  `role` enum('Admin','Faculty') NOT NULL,
+  `role` enum('Admin','Faculty','Super Admin') NOT NULL,
+  `status` enum('Active','Disabled') NOT NULL DEFAULT 'Active',
   PRIMARY KEY (`user_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -423,7 +424,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'Earl Gareth M. Caguete','$2y$10$29bPKRH/n5/1yUUWSafZTeihqJbVX4ibAn77qce/F9NZPkPnyAb/6','Faculty'),(2,'tester','$2y$10$./htpihuYtfmqcidExgpuO/zb44PEgWXYkfCOSBxZb/RQvWyP9DD.','Faculty'),(3,'admin','$2y$10$rloIj1XIX8fOBy0dubqjcusaf05SU2ugzlHpnPDwEoUuqo/Vki.MO','Faculty'),(4,'adminadmin','$2y$10$K5oc3l68kocs4UBuB3IFQeLHdzkJbWgg2qWcB5/0Hca9OsIrMy6N2','Admin'),(5,'Brent','$2y$10$EpYg.sBKZYXhgjmyaVKMFO1jAGthF.FK6W8fTvyknPE4mux1G9xVm','Faculty'),(6,'admin123','$2y$10$g1v1DiK22m/WLO3pLd.ttOssWJaMdv9oqh2waNGgclVq8kajEiTNG','Faculty'),(7,'admin_test','$2y$10$oSBgC7IxcEPaVr7hP5RBjeVmvsEQpok5hZ5uE2ZlSaT1U9aJY4Eiu','Faculty'),(8,'NewUser','$2y$10$HA/NKMNRm9pqJ2s6guGIy.fhan/a.nayCmCdf8r474ReVndMth9Rm','Faculty'),(9,'tester123','$2y$10$efVH2nhOu8qjNurptq7z2.25OfzVxUu/dYeE35.fERrXEnDIF0E.y','Admin');
+INSERT INTO `users` VALUES (1,'Earl Gareth M. Caguete','$2y$10$29bPKRH/n5/1yUUWSafZTeihqJbVX4ibAn77qce/F9NZPkPnyAb/6','Faculty','Active'),(2,'tester','$2y$10$./htpihuYtfmqcidExgpuO/zb44PEgWXYkfCOSBxZb/RQvWyP9DD.','Faculty','Active'),(3,'admin','$2y$10$rloIj1XIX8fOBy0dubqjcusaf05SU2ugzlHpnPDwEoUuqo/Vki.MO','Faculty','Active'),(4,'adminadmin','$2y$10$K5oc3l68kocs4UBuB3IFQeLHdzkJbWgg2qWcB5/0Hca9OsIrMy6N2','Admin','Active'),(5,'Brent','$2y$10$EpYg.sBKZYXhgjmyaVKMFO1jAGthF.FK6W8fTvyknPE4mux1G9xVm','Faculty','Active'),(6,'admin123','$2y$10$g1v1DiK22m/WLO3pLd.ttOssWJaMdv9oqh2waNGgclVq8kajEiTNG','Faculty','Active'),(7,'admin_test','$2y$10$oSBgC7IxcEPaVr7hP5RBjeVmvsEQpok5hZ5uE2ZlSaT1U9aJY4Eiu','Faculty','Active'),(8,'NewUser','$2y$10$HA/NKMNRm9pqJ2s6guGIy.fhan/a.nayCmCdf8r474ReVndMth9Rm','Faculty','Active'),(9,'tester123','$2y$10$efVH2nhOu8qjNurptq7z2.25OfzVxUu/dYeE35.fERrXEnDIF0E.y','Admin','Active');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

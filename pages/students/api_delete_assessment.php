@@ -4,8 +4,9 @@ require_once '../../db.php';
 
 header('Content-Type: application/json');
 
-if (($_SESSION['role'] ?? '') !== 'Admin') {
-    echo json_encode(['success' => false, 'error' => 'Unauthorized: Admins only.']);
+$allowed_roles = ['Faculty', 'Admin', 'Super Admin'];
+if (!in_array($_SESSION['role'] ?? '', $allowed_roles)) {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized access.']);
     exit;
 }
 
